@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OMS/WMS 2.0 아키텍처 (v1)</title>
+<style>
+  :root{
+    --bg:#0f1117; --panel:#171a23; --card:#1c2030; --border:#2a3045; --text:#e6e9f2; --muted:#8b93a7;
+    --a:#5b8def; --b:#e0b34d; --c:#e06c75; --d:#56b6c2; --e:#98c379; --f:#c678dd;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f5f6fa; --panel:#ffffff; --card:#ffffff; --border:#dde1ec; --text:#1c2130; --muted:#66708a; }
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",sans-serif; padding:24px; line-height:1.6; max-width:1400px; margin:0 auto;}
+  h1{font-size:22px; margin-bottom:4px;}
+  h2{font-size:17px; margin:28px 0 12px; display:flex; align-items:center; gap:8px;}
+  .sub{color:var(--muted); font-size:13px; margin-bottom:16px;}
+  .sub a{color:var(--a);}
+  .dot{width:10px; height:10px; border-radius:3px; display:inline-block;}
+  .decision{background:var(--panel); border:1px solid var(--b); border-radius:12px; padding:12px 16px; margin-bottom:18px; font-size:13px;}
+  /* 레이어 다이어그램 */
+  .layer{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:14px 16px; margin-bottom:10px;}
+  .layer > .lt{font-size:12px; color:var(--muted); margin-bottom:8px; letter-spacing:.5px;}
+  .boxes{display:flex; gap:10px; flex-wrap:wrap;}
+  .box{background:var(--card); border:1px solid var(--border); border-left:3px solid var(--bc, var(--a)); border-radius:10px; padding:10px 12px; font-size:12.5px; flex:1; min-width:200px;}
+  .box b{display:block; font-size:13px; margin-bottom:3px;}
+  .box .m{color:var(--muted); font-size:11.5px;}
+  .box.new{border-style:solid; box-shadow:0 0 0 1px var(--bc, var(--a)) inset;}
+  .box.reuse{opacity:.8;}
+  .tag{display:inline-block; font-size:10px; border-radius:5px; padding:1px 6px; margin-left:6px; vertical-align:middle;}
+  .tag.n{background:rgba(152,195,121,.18); color:var(--e);}
+  .tag.r{background:rgba(139,147,167,.18); color:var(--muted);}
+  .tag.h{background:rgba(224,179,77,.18); color:var(--b);}
+  .arrows{color:var(--muted); font-size:11.5px; text-align:center; padding:4px 0;}
+  /* 시나리오 표 */
+  table{width:100%; border-collapse:collapse; font-size:12.5px; table-layout:fixed;}
+  td,th{padding:6px 8px; border-top:1px solid var(--border); vertical-align:top; word-break:break-word; overflow-wrap:anywhere; text-align:left;}
+  th{color:var(--muted); font-weight:600; font-size:12px;}
+  td.s{color:var(--e); font-weight:600; width:17%;}
+  td.c{width:26%; font-family:ui-monospace,Menlo,monospace; font-size:11.5px; color:var(--d);}
+  .panelbox{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:14px 16px; margin-bottom:14px;}
+  .ms{display:flex; gap:10px; flex-wrap:wrap;}
+  .msbox{background:var(--card); border:1px solid var(--border); border-top:3px solid var(--e); border-radius:10px; padding:10px 12px; font-size:12px; flex:1; min-width:210px;}
+  .msbox b{display:block; font-size:13px; margin-bottom:4px;}
+  .msbox .m{color:var(--muted); font-size:11.5px;}
+</style>
+</head>
+<body>
+<h1>OMS/WMS 2.0 — 시스템 아키텍처 <span style="font-size:12px;color:var(--muted);font-weight:400">(v1 · 스키마 v12 확정 기반 · SSD-4967)</span></h1>
+<div class="sub">스키마(확정 v12): <a href="./index.html">스키마 페이지</a> · 태그: <span class="tag n">신규</span> 새로 만드는 것 · <span class="tag r">재사용</span> 기존 시스템 그대로 · <span class="tag h">하드웨어</span></div>
+
+<div class="decision">🔑 <b>핵심 아키텍처 결정 (권고안 — 민철 최종 컨펌 1건 대기)</b>: V2는 별도 서비스가 아니라 <b>SkinSeoulFacade `apps/internal-api` 안의 새 도메인(`domain/wms2`) + 신규 Cloud SQL(PostgreSQL)</b>로 짓는다. 이유 — ① 배포 파이프라인·인증(ApiKeyGuard/JWT)·모듈 패턴 재사용, ② V1(DDB)과 같은 프로세스에서 병행 운영 → 컷오버가 라우팅 스위치 수준, ③ 이미 회사가 Cloud SQL 운영 중. 프론트는 기존 AdminDashboard에 화면 8종(와이어프레임 확정본) 추가 — 신규 앱 없음.</div>
+
+<h2><i class="dot" style="background:var(--a)"></i>전체 그림 — 5층 레이어</h2>
+
+<div class="layer">
+  <div class="lt">① 창고 현장 (물리)</div>
+  <div class="boxes">
+    <div class="box" style="--bc:var(--b)"><b>스캔 스테이션 ×8~15 <span class="tag r">재사용</span></b><div class="m">브라우저(AdminDashboard) + USB 스캔건. 작업자 식별: team.skinseoul.com 첫날 이름 등록(7/6). 클릭-애니웨어 포커스, 스캔 사이 새로고침 없음</div></div>
+    <div class="box new" style="--bc:var(--b)"><b>로컬 프린트 에이전트 <span class="tag n">신규</span></b><div class="m">스테이션 PC 상주 — 브라우저는 사일런트 프린트 불가. 라벨 PDF(S3 URL) 수신 → 즉시 출력. 멱등키로 이중 출력 방지</div></div>
+    <div class="box" style="--bc:var(--b)"><b>라벨 프린터·피킹 리스트 <span class="tag h">하드웨어</span></b><div class="m">100×150mm 라벨 + 종이 피킹 리스트(사행 정렬, 정시 배치 — 7/6 확정, 모바일 앱 보류). LED 선반은 phase-2</div></div>
+  </div>
+</div>
+<div class="arrows">↑↓ HTTPS (스캔 API는 P95 200ms 목표 · 오프라인 정책은 M2에서 결정)</div>
+<div class="layer">
+  <div class="lt">② 프론트엔드</div>
+  <div class="boxes">
+    <div class="box" style="--bc:var(--e)"><b>SkinSeoulAdminDashboard <span class="tag r">재사용</span></b><div class="m">기존 어드민에 WMS 2.0 화면 8종 추가: View Orders(스캔) · Order Detail · Ready-to-Outbound · Inventory/실사 · Order Mgmt · 트래킹 미입력 · 마감 · 입고 요청 — 와이어프레임 확정본(용원) 그대로</div></div>
+    <div class="box" style="--bc:var(--e)"><b>인증 <span class="tag r">재사용</span></b><div class="m">기존 어드민 계정(JWT) + 창고 작업자 간이 이름 등록. actor/station_id 분리 기록</div></div>
+  </div>
+</div>
+<div class="arrows">↑↓ REST (기존 ApiRouting 패턴)</div>
+<div class="layer">
+  <div class="lt">③ 백엔드 — SkinSeoulFacade apps/internal-api 안의 <b>domain/wms2</b> <span class="tag n">신규 도메인</span></div>
+  <div class="boxes">
+    <div class="box new"><b>Scan API</b><div class="m">스캔 리졸버(트래킹/바코드/주문번호/박스순번 → 한 번에 해석) · 입고/출고/취소 · 멱등키 · event(SCAN) 기록</div></div>
+    <div class="box new"><b>Order/RTO API</b><div class="m">주문·라인·예약 CRUD, RTO 목록(rollup+라인 인덱스), 머지=re-parent, 홀드, 피킹 배치 생성(사행 정렬)</div></div>
+    <div class="box new"><b>Ops Docs API</b><div class="m">입고 요청서·마감(음성 경고 트리거)·실사(주기 가변) — ops_doc/ops_doc_line</div></div>
+    <div class="box new"><b>라벨 렌더러</b><div class="m">YUN·Deleo 자체 렌더(7/6: Deleo 방식 확장 — YT번호+주문번호) → S3 → 프린트 에이전트</div></div>
+    <div class="box new"><b>WC 스위퍼 (시간당 cron)</b><div class="m">WMS≠WC 비교 재푸시(유실 자가치유) + wc_status 캐시 기록 + 환불→라인 CANCELLED/RELEASED 반영(v12) — outbox 없음</div></div>
+    <div class="box new"><b>배치 잡</b><div class="m">월말 재고·예약 스냅샷(BI) · BI export(배송 성능·COGS·손실 KPI) · JIT 에이징 스캔</div></div>
+  </div>
+</div>
+<div class="arrows">↑↓ 트랜잭션 (원장+밸런스+예약 = 같은 txn)</div>
+<div class="layer">
+  <div class="lt">④ 데이터</div>
+  <div class="boxes">
+    <div class="box new" style="--bc:var(--f)"><b>신규 Cloud SQL (PostgreSQL) <span class="tag n">신규</span></b><div class="m"><b>확정 스키마 v12 — 9테이블</b>: fulfillment_order · line · stock_movement(원장) · stock_balance · reservation · tracking_number · ops_doc · ops_doc_line · event. dev/staging/prod 3환경, 원장 월 파티션</div></div>
+    <div class="box reuse" style="--bc:var(--f)"><b>V1 DynamoDB <span class="tag r">병행→폐기</span></b><div class="m">컷오버까지 병행 운영. 마이그레이션 도구(M1~M6 규칙)가 이관 + 검증 리포트. BQ 리드모델은 컷오버 후 폐기</div></div>
+    <div class="box reuse" style="--bc:var(--f)"><b>기존 저장소 (OOS) <span class="tag r">재사용</span></b><div class="m">카탈로그(WP — 라이브 조회+앱 캐시) · 어드민 계정 · 환불 승인 저장소 · Gigwork Spanner · S3(라벨)</div></div>
+  </div>
+</div>
+<div class="arrows">↑↓ 웹훅 in / 비동기 호출 out</div>
+<div class="layer">
+  <div class="lt">⑤ 외부 시스템</div>
+  <div class="boxes">
+    <div class="box reuse" style="--bc:var(--c)"><b>WooCommerce</b><div class="m">주문 SoT. 웹훅 in(주문·취소) / 상태 push out(건별 비동기, 일괄은 batch API 100건, 터미널 다운그레이드 가드)</div></div>
+    <div class="box reuse" style="--bc:var(--c)"><b>캐리어 4사</b><div class="m">YUN·Deleo·Parxl·FedEx — 웹훅 → tracking_number.events(내부 상태머신과 격리 매핑)</div></div>
+    <div class="box reuse" style="--bc:var(--c)"><b>쿠팡 (긱워크)</b><div class="m">긱 익스텐션 발주 → sourcing_cost·소싱 트래킹. Gigwork 도메인은 기존 유지, line id로 연결</div></div>
+    <div class="box new" style="--bc:var(--c)"><b>AI 에이전트 <span class="tag n">신규 접점</span></b><div class="m">skin-seoul MCP에 WMS 도구 노출(1급 요건) — 6시간 미입력 알림(카톡)·미인식 워크리스트·오버듀 대시보드. Grafana: 원장 드리프트·스캔 P95·스위퍼 알람</div></div>
+  </div>
+</div>
+
+<h2><i class="dot" style="background:var(--e)"></i>시나리오 → 컴포넌트 매핑 (우리가 가진 시나리오 전부)</h2>
+<div class="panelbox">
+<table>
+<tr><th style="width:17%">시나리오</th><th>흐름</th><th style="width:26%">주요 컴포넌트 / 테이블</th></tr>
+<tr><td class="s">주문 유입 (WC/마케팅/CreatorHub)</td><td>WC 웹훅 또는 CSV/캠페인 → 카탈로그 조회로 부모 SKU·pack 해석(R1: 전 채널 1회) → 주문+라인 생성(순차 발번) → 재고 있으면 예약+INBOUNDED(R3), 없으면 JIT_COMMITTED. 마케팅 멱등은 segments UNIQUE(R8)</td><td class="c">Order API → fulfillment_order·line·reservation·event(ORDER_OP)</td></tr>
+<tr><td class="s">JIT 발주 → 도착</td><td>긱워커 쿠팡 발주(기존 Gigwork) → sourcing_cost·소싱 트래킹 등록 → 6시간 미입력 시 AI 알림 → 도착 스캔: 트래킹 인덱스 1히트 → 입고 원장+밸런스+예약 ON_HAND 전환(같은 txn) → 라인 INBOUNDED. 쿠팡 임의 분할은 실물 스캔 수량 기준</td><td class="c">Scan API + Gigwork(OOS) → stock_movement·stock_balance·reservation·tracking_number</td></tr>
+<tr><td class="s">RTO → 피킹 → 출고</td><td>전 라인 INBOUNDED/READY → RTO 노출(rollup 인덱스) → 정시 피킹 배치 생성(종이 리스트, 사행 정렬) → 일괄 출고: 원장 OUTBOUND + 예약 CONSUMED(R2: 상태전이, 재체크 없음) + 라벨 자체 렌더→S3→프린트 에이전트 + WC 비동기 push</td><td class="c">Order/RTO API·라벨 렌더러·프린트 에이전트 → 원장·reservation·tracking_number</td></tr>
+<tr><td class="s">마감</td><td>박스 전체 재스캔 → ops_doc(CLOSING)+라인(UNIQUE 박스순번, 중복=경고+음성) → 정확 일치 확정 → 이후 아웃바운드 취소 차단</td><td class="c">Ops Docs API → ops_doc·ops_doc_line·tracking.close_doc_id</td></tr>
+<tr><td class="s">실사</td><td>주기 가변(주~월) · 로케이션순 워크스루(선반 펜딩 포함) → 차이 확정분만 원장 AUDIT_ADJUST → 손실 KPI 승인</td><td class="c">Ops Docs API → ops_doc(STOCK_AUDIT)·stock_movement</td></tr>
+<tr><td class="s">반품</td><td>반품 송장 스캔 → 라인 RETURNED + return_info(grading) → RETURN_RESTOCK 원장(재판매 가능 시)</td><td class="c">Scan API → line.return_info·stock_movement</td></tr>
+<tr><td class="s">홀드 (CS)</td><td>CS가 hold 세팅 → Outbound 즉시 차단 → 해소 후 event 기록</td><td class="c">Order API → fulfillment_order.hold_*·event</td></tr>
+<tr><td class="s">취소·환불</td><td>WC 웹훅/스위퍼 감지 → 라인 CANCELLED + 예약 RELEASED(reason) — SSD-4448 구조적 해소. 환불 승인 플로우 자체는 기존 저장소(OOS)</td><td class="c">WC 스위퍼 → line·reservation·event</td></tr>
+<tr><td class="s">배송 추적</td><td>캐리어 웹훅 → tracking events 누적(구간 소요=Dynamic SLA 원천) → unified 매핑 → WC push(가드)</td><td class="c">웹훅 핸들러 → tracking_number.events·notifications</td></tr>
+<tr><td class="s">미인식 스캔</td><td>인식 실패 → event(SCAN·UNRECOGNIZED)+추정 제품+사진 → PIC 배정 → 6시간 AI 에스컬레이션 → 해결</td><td class="c">Scan API + AI 에이전트 → event</td></tr>
+<tr><td class="s">머지/클론</td><td>머지=라인 re-parent(예약 자동 추종), 빈 껍데기=MERGED(R10) / 클론=라인 재발급, 예약 복사 금지</td><td class="c">Order API → line.order_id UPDATE·event</td></tr>
+<tr><td class="s">모니터링·BI</td><td>원장 드리프트 검증 뷰 · 스캔 P95 메트릭 · 스위퍼 실패 알람(Grafana) · 월말 스냅샷+월 배치 export(배송 성능·COGS·손실)</td><td class="c">배치 잡 + Grafana</td></tr>
+</table>
+</div>
+
+<h2><i class="dot" style="background:var(--d)"></i>V1 병행 → 컷오버</h2>
+<div class="panelbox" style="font-size:12.5px">
+같은 internal-api 프로세스 안에서 <b>V1(DDB) 라이브 유지 + V2(PG) 구축</b> → 마이그레이션 도구가 M1~M6 규칙으로 이관(수량 재계산 금지·멱등키 timelineKey 시드·MKT- 해체·상태 매핑표) + <b>검증 리포트</b>(합계 불변식, 짝 안 맞는 pending, productId→sku 실패 건) → 화면 단위 점진 전환(읽기 먼저 → 쓰기 전환) → 재고 write 전환일은 실사와 함께(초기 원장 = 실사 기반 생성) → BQ 리드모델·DDB 폐기. 창고 무중단.
+</div>
+
+<h2><i class="dot" style="background:var(--f)"></i>마일스톤</h2>
+<div class="ms">
+  <div class="msbox"><b>M0 · 골격</b><div class="m">아키텍처 컨펌 · Cloud SQL 3환경 · wms2 도메인 스캐폴드 · 상태머신 정본+WC 계약 문서 2건 · DDL v12</div></div>
+  <div class="msbox"><b>M1 · 재고 코어</b><div class="m">원장+밸런스+예약 (최대 재작성 범위: OutboundStock+프로세서4+예약 핸들러 대체) · 행동 계약 R1~R10 integ 테스트 고정</div></div>
+  <div class="msbox"><b>M2 · 스캔 스테이션</b><div class="m">Scan API·리졸버·RTO·피킹 배치·라벨 렌더러+프린트 에이전트·마감·실사 — 화면 8종 연결</div></div>
+  <div class="msbox"><b>M3 · 통합·마이그레이션</b><div class="m">WC 스위퍼·캐리어 웹훅 재홈·마이그레이션 도구+검증 리포트·병행 운영·컷오버</div></div>
+  <div class="msbox"><b>M4 · 에이전트·관측</b><div class="m">MCP 도구 노출·AI 알림·오버듀 대시보드·Grafana·BI export — 이후 phase-2(FIFO·LED·모바일)</div></div>
+</div>
+
+<div class="sub" style="margin-top:24px">근거 문서: <a href="./index.html">스키마 v12(확정)</a> — 행동 규칙 계약 R1~R10 · 마이그레이션 규칙 M1~M6 · V1 호환 맵 · 실측 데이터 예시 포함</div>
+</body>
+</html>
