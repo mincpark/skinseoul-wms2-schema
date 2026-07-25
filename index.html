@@ -28,7 +28,7 @@
   .groups{display:flex; flex-direction:column; gap:22px;}
   .group h2{font-size:15px; margin-bottom:10px; display:flex; align-items:center; gap:8px;}
   .cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:12px;}
-  .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer; transition:box-shadow .15s, opacity .15s; border-top:3px solid var(--gc);}
+  .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer; transition:box-shadow .15s, opacity .15s; border-top:3px solid var(--gc); overflow:hidden; min-width:0;}
   .card.dim{opacity:.22;}
   .card.sel{box-shadow:0 0 0 2px var(--gc);}
   .card.rel{box-shadow:0 0 0 1px var(--gc);}
@@ -38,12 +38,13 @@
   .absorb{display:inline-block; background:rgba(198,120,221,.15); color:var(--f); font-size:10.5px; border-radius:5px; padding:1px 6px; margin:0 4px 8px 0;}
   .fixes{display:inline-block; background:rgba(224,108,117,.15); color:var(--c); font-size:10.5px; border-radius:5px; padding:1px 6px; margin:0 4px 8px 0;}
   table{width:100%; border-collapse:collapse; font-size:11.5px; table-layout:fixed;}
-  td{padding:3px 4px; border-top:1px solid var(--border); vertical-align:top; word-break:break-word; overflow-wrap:anywhere;}
-  td.k{font-family:ui-monospace,Menlo,monospace; color:var(--text); width:34%;}
+  td{padding:3px 4px; border-top:1px solid var(--border); vertical-align:top; word-break:break-word; overflow-wrap:anywhere; white-space:normal; max-width:0;}
+  td.k{font-family:ui-monospace,Menlo,monospace; color:var(--text); width:40%;}
   td.t{color:var(--muted); white-space:normal; font-size:10.5px;}
   td.w{color:var(--muted); display:none;}
-  body.showwhy td.w{display:table-cell; width:38%;}
-  body.showwhy td.k{width:28%;}
+  body.showwhy td.w{display:table-cell; width:46%; word-break:break-word; overflow-wrap:anywhere; white-space:normal;}
+  body.showwhy td.k{width:27%;}
+  body.showwhy td.t{width:27%;}
   td .pk{color:var(--b); font-weight:600;} td .fk{color:var(--d);} td .jb{color:var(--f);}
   #relbox{position:sticky; bottom:12px; margin-top:20px; background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px 16px; font-size:13px; display:none;}
   #relbox b{font-family:ui-monospace,Menlo,monospace;}
