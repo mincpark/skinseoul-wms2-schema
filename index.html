@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OMS/WMS 2.0 스키마 ERD</title>
+<title>OMS/WMS 2.0 스키마 (v2 간소화)</title>
 <style>
   :root{
     --bg:#0f1117; --panel:#171a23; --card:#1c2030; --border:#2a3045; --text:#e6e9f2; --muted:#8b93a7;
-    --a:#5b8def; --b:#e0b34d; --c:#e06c75; --d:#56b6c2; --e:#98c379; --f:#c678dd; --g:#d19a66;
+    --a:#5b8def; --b:#e0b34d; --c:#e06c75; --d:#56b6c2; --e:#98c379; --f:#c678dd;
   }
   @media (prefers-color-scheme: light){
     :root{ --bg:#f5f6fa; --panel:#ffffff; --card:#ffffff; --border:#dde1ec; --text:#1c2130; --muted:#66708a; }
@@ -15,8 +15,11 @@
   *{box-sizing:border-box; margin:0; padding:0;}
   body{background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",sans-serif; padding:24px; line-height:1.5;}
   h1{font-size:22px; margin-bottom:4px;}
-  .sub{color:var(--muted); font-size:13px; margin-bottom:16px;}
-  .toolbar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; align-items:center;}
+  .sub{color:var(--muted); font-size:13px; margin-bottom:14px;}
+  .stats{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;}
+  .stat{background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:8px 14px; font-size:12.5px;}
+  .stat b{font-size:16px;}
+  .toolbar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center;}
   .toolbar button{background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:6px 12px; font-size:13px; cursor:pointer;}
   .toolbar button.active{border-color:var(--a); box-shadow:0 0 0 1px var(--a);}
   .hint{color:var(--muted); font-size:12px;}
@@ -25,77 +28,91 @@
   .dot{width:10px; height:10px; border-radius:3px; display:inline-block;}
   .groups{display:flex; flex-direction:column; gap:22px;}
   .group h2{font-size:15px; margin-bottom:10px; display:flex; align-items:center; gap:8px;}
-  .cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px;}
-  .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer; transition:box-shadow .15s, opacity .15s, border-color .15s; border-top:3px solid var(--gc);}
-  .card.dim{opacity:.25;}
-  .card.sel{box-shadow:0 0 0 2px var(--gc); }
+  .cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:12px;}
+  .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer; transition:box-shadow .15s, opacity .15s; border-top:3px solid var(--gc);}
+  .card.dim{opacity:.22;}
+  .card.sel{box-shadow:0 0 0 2px var(--gc);}
   .card.rel{box-shadow:0 0 0 1px var(--gc);}
-  .card h3{font-size:14px; font-family:ui-monospace,Menlo,monospace; margin-bottom:2px;}
+  .card h3{font-size:14px; font-family:ui-monospace,Menlo,monospace; margin-bottom:2px; display:flex; align-items:center; gap:6px;}
+  .keep{font-size:10px; background:rgba(224,179,77,.18); color:var(--b); border-radius:5px; padding:1px 6px; font-family:inherit;}
   .card .why{color:var(--muted); font-size:12px; margin-bottom:8px;}
-  .fixes{display:inline-block; background:rgba(224,108,117,.15); color:var(--c); font-size:10.5px; border-radius:5px; padding:1px 6px; margin-bottom:8px; margin-right:4px;}
-  .fr{display:inline-block; background:rgba(91,141,239,.15); color:var(--a); font-size:10.5px; border-radius:5px; padding:1px 6px; margin-bottom:8px; margin-right:4px;}
+  .absorb{display:inline-block; background:rgba(198,120,221,.15); color:var(--f); font-size:10.5px; border-radius:5px; padding:1px 6px; margin:0 4px 8px 0;}
+  .fixes{display:inline-block; background:rgba(224,108,117,.15); color:var(--c); font-size:10.5px; border-radius:5px; padding:1px 6px; margin:0 4px 8px 0;}
+  .fr{display:inline-block; background:rgba(91,141,239,.15); color:var(--a); font-size:10.5px; border-radius:5px; padding:1px 6px; margin:0 4px 8px 0;}
   table{width:100%; border-collapse:collapse; font-size:11.5px;}
   td{padding:3px 4px; border-top:1px solid var(--border); vertical-align:top;}
-  td.k{font-family:ui-monospace,Menlo,monospace; white-space:nowrap; color:var(--text);}
+  td.k{font-family:ui-monospace,Menlo,monospace; color:var(--text);}
   td.t{color:var(--muted); white-space:nowrap; font-size:10.5px;}
   td.w{color:var(--muted); display:none;}
   body.showwhy td.w{display:table-cell;}
-  td .pk{color:var(--b); font-weight:600;} td .fk{color:var(--d);}
+  td .pk{color:var(--b); font-weight:600;} td .fk{color:var(--d);} td .jb{color:var(--f);}
   #relbox{position:sticky; bottom:12px; margin-top:20px; background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px 16px; font-size:13px; display:none;}
   #relbox b{font-family:ui-monospace,Menlo,monospace;}
   #relbox ul{margin:6px 0 0 18px; color:var(--muted);}
+  .mapbox{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:20px; font-size:12.5px; display:none;}
+  body.showmap .mapbox{display:block;}
+  .mapbox table td{font-size:11.5px;}
 </style>
 </head>
 <body>
-<h1>OMS/WMS 2.0 — 데이터 스키마 ERD <span style="font-size:12px;color:var(--muted);font-weight:400">(v1 초안 · SSD-5345 · pending approval)</span></h1>
-<div class="sub">테이블 카드를 클릭하면 FK로 연결된 테이블만 하이라이트됩니다. PostgreSQL(Cloud SQL) 가정 · <span style="color:var(--b)">◆</span>=PK · <span style="color:var(--d)">→</span>=FK</div>
+<h1>OMS/WMS 2.0 — 데이터 스키마 <span style="font-size:12px;color:var(--muted);font-weight:400">(v2 간소화 · SSD-5345 · pending approval)</span></h1>
+<div class="sub">테이블 카드 클릭 = FK 관계 하이라이트 · <span style="color:var(--b)">◆</span>=PK · <span style="color:var(--d)">→</span>=FK · <span style="color:var(--f)">{}</span>=jsonb 흡수 · PostgreSQL(Cloud SQL) 가정</div>
+<div class="stats">
+  <div class="stat">테이블 <b>16</b> <span style="color:var(--muted)">(v1 초안 26 → 간소화)</span></div>
+  <div class="stat"><span class="keep">사수</span> <b>4</b> — stock_movement · stock_item · order_line · tracking_number <span style="color:var(--muted)">(합치면 V1 병 재발)</span></div>
+  <div class="stat">흡수·삭제 <b>12</b> <span style="color:var(--muted)">— "간소화 맵" 버튼</span></div>
+</div>
 <div class="toolbar">
   <button id="whyBtn">필드별 "왜" 표시</button>
+  <button id="mapBtn">간소화 맵 (뭐가 어디로 갔나)</button>
   <button id="clearBtn">선택 해제</button>
-  <span class="hint">근거: 요구사항 명세서 FR 번호 · V1 병(SSD 티켓) 배지</span>
+  <span class="hint">간소화 원칙: 별도 테이블은 독립 수명주기 + 고빈도 인덱스 조회 + DB 무결성 필요할 때만. 저빈도 디테일은 jsonb.</span>
+</div>
+<div class="mapbox">
+  <b>간소화 맵 — v1 초안 26 → v2 16</b>
+  <table>
+    <tr><td class="k">product_barcode</td><td>→ product_ref.barcode_ean + barcode_coupang (둘 다 인덱스)</td></tr>
+    <tr><td class="k">reservation</td><td>→ order_line.qty_reserved + reserve_kind + reserved_stock_item_id (이력은 원장 RESERVE/RELEASE 행)</td></tr>
+    <tr><td class="k">shipment_box</td><td>→ tracking_number.box_seq (박스 = 송장번호+순번)</td></tr>
+    <tr><td class="k">order_hold</td><td>→ wms_order.hold_* 컬럼 + 시스템 코멘트로 이력</td></tr>
+    <tr><td class="k">comment_mention</td><td>→ order_comment.mentions jsonb</td></tr>
+    <tr><td class="k">order_return</td><td>→ order_line.return_info jsonb + 원장 RETURN_RESTOCK</td></tr>
+    <tr><td class="k">close_batch_scan</td><td>→ close_batch.scans jsonb (중복검사 서비스 레이어)</td></tr>
+    <tr><td class="k">audit_line</td><td>→ audit_session.lines jsonb (월 1회 저빈도)</td></tr>
+    <tr><td class="k">missing_tracking_item</td><td>→ scan_event 워크플로우 컬럼 (미인식 스캔 = 미입력 아이템)</td></tr>
+    <tr><td class="k">supplier / purchase_order</td><td>→ inbound_request.supplier_name / po_ref 텍스트 (phase-2 승격)</td></tr>
+    <tr><td class="k">stock_lot / role</td><td>→ 삭제 (A12 결정 시 재도입) / app_user.role 컬럼</td></tr>
+  </table>
 </div>
 <div class="legend">
-  <span><i class="dot" style="background:var(--a)"></i>카탈로그/로케이션</span>
-  <span><i class="dot" style="background:var(--e)"></i>주문</span>
-  <span><i class="dot" style="background:var(--b)"></i>재고 원장(심장)</span>
-  <span><i class="dot" style="background:var(--d)"></i>물리 흐름</span>
-  <span><i class="dot" style="background:var(--g)"></i>입고/구매</span>
-  <span><i class="dot" style="background:var(--f)"></i>운영</span>
-  <span><i class="dot" style="background:var(--c)"></i>통합/보안</span>
+  <span><i class="dot" style="background:var(--a)"></i>카탈로그/로케이션 (2)</span>
+  <span><i class="dot" style="background:var(--e)"></i>주문 (3)</span>
+  <span><i class="dot" style="background:var(--b)"></i>재고 원장 — 심장 (2)</span>
+  <span><i class="dot" style="background:var(--d)"></i>물리 흐름 (4)</span>
+  <span><i class="dot" style="background:var(--f)"></i>입고 (2)</span>
+  <span><i class="dot" style="background:var(--c)"></i>운영/통합 (3)</span>
 </div>
 <div class="groups" id="groups"></div>
 <div id="relbox"></div>
 <script>
-const G = {A:{name:"A. 카탈로그 미러 & 로케이션",color:"var(--a)"},B:{name:"B. 주문",color:"var(--e)"},C:{name:"C. 재고 원장 — 시스템의 심장",color:"var(--b)"},D:{name:"D. 물리적 흐름 (배송·스캔·마감·반품)",color:"var(--d)"},E:{name:"E. 입고 / 구매",color:"var(--g)"},F:{name:"F. 운영",color:"var(--f)"},X:{name:"G. 통합 / 보안",color:"var(--c)"}};
+const G = {A:{name:"A. 카탈로그 & 로케이션",color:"var(--a)"},B:{name:"B. 주문",color:"var(--e)"},C:{name:"C. 재고 원장 — 시스템의 심장",color:"var(--b)"},D:{name:"D. 물리적 흐름 (배송·스캔·마감)",color:"var(--d)"},E:{name:"E. 입고",color:"var(--f)"},F:{name:"F. 운영/통합",color:"var(--c)"}};
 const T = [
-{id:"product_ref",g:"A",why:"제품 참조 미러. Variation→Variable 부모 관계와 pack 수량이 여기 있어 재고가 항상 부모 SKU로만 기록됨.",fixes:["SSD-2780 유령품절"],fr:["FR-L.13","FR-B.3"],f:[["sku","text ◆","WMS 전체 제품 식별자"],["parent_sku","text?","Variation이면 부모 Variable SKU — 재고는 항상 부모로"],["product_type","enum","SIMPLE/VARIABLE/VARIATION — 입고 시 분기"],["pack_size","int",'1+1·2개입 수량 환산 + 송장 qty 강조'],["brand","text","송장에 브랜드 항상 노출 (이름 파싱 금지)"],["display_name(_ko)","text","화면용 한/영 이름"],["warehouse_short_name","text?","100mm 라벨 폭용 짧은 이름"],["customs_name","text?",'통관 표기 — "(+ sample set)" 부착 대상'],["default_unit_cost","numeric?","실사 손실액 fallback"]],rel:["product_barcode","order_line","stock_item","stock_movement","stock_lot"]},
-{id:"product_barcode",g:"A",why:"듀얼 바코드(쿠팡+EAN) 인덱스. 스캔 리졸버의 1차 조회 지점.",fr:["FR-K.1","FR-C.17"],f:[["barcode","text ◆","스캔 입력값 그대로 조회"],["sku","→product_ref","해석 결과"],["barcode_type","enum","EAN/COUPANG/CUSTOM — 충돌 시 모드별 우선순위"]],rel:["product_ref"]},
-{id:"location",g:"A",why:"로케이션 마스터. 피킹 순서·국가랙·LED 슬롯 등 로케이션 자체 속성의 집.",fr:["FR-E.2","FR-D.1","FR-K.3","FR-H.1"],f:[["code","text UQ","A1-1-1 포맷 — CSV 검증 대상"],["country_rack","text?","국가별 랙 분리"],["pick_sequence","int","피킹 리스트/실사 정렬 키"],["led_slot_id","text?","phase-2 아두이노 대비 자리"]],rel:["stock_item","stock_movement"]},
-{id:"stock_lot",g:"A",why:"로트/유통기한 (A12 결정 대기 — 설계만 예약). 지금은 만들지 않고 stock_item/movement에 lot_id NULL 자리만.",fr:["A12","EC-25"],f:[["lot_no","text","배치 번호"],["expiry_date","date","FEFO 피킹 기준"],["unit_cost","numeric","로트 원가 (FIFO 정산 대비)"]],rel:["product_ref","stock_item"]},
-{id:"wms_order",g:"B",why:"풀필먼트 주문 = 우리(WMS)가 소유하는 유일한 주문. Commerce Order(WC)는 외부 SoT라 읽기+통보만, 캐리어 주문은 그들 것(shipment가 사상만 보유). 독립 발번 ID — 커머스 링크는 라인 레벨 M:N(split/merge 실존).",fixes:["SSD-4269 거대문서 쓰기"],fr:["FR-L.10","FR-D.4","§1.5 주문 2층+실행 1층"],f:[["id","text ◆","독립 발번 — WC 번호 빌려쓰기 금지 (split/merge M:N)"],["channel","enum","WC/MARKETING_CSV/CREATORHUB"],["country_code","text","국가랙·EU 샘플 제외"],["rollup_status","enum","라인에서 파생된 캐시 (진실은 라인)"],["is_marketing / is_mystery_box","bool","RTO 색/탭 + 샘플 룰"],["pic_user_id","→app_user?","트래킹 미입력 PIC 그룹핑"],["version","int","낙관락"]],rel:["order_line","order_hold","order_comment","shipment","order_return"]},
-{id:"order_line",g:"B",why:"상태머신의 본체. 입출고의 물리 현실은 제품 단위이므로 상태는 라인에 산다 (A1). V1의 INBOUNDED 단일값과 ''=JIT 해킹을 정식 enum으로 교체.",fixes:["V1 라인상태 부재"],fr:["FR-L.3","FR-D.6"],f:[["order_id","→wms_order",""],["line_status","enum ◆심장","ORDERED→RESERVED→AWAITING_INBOUND→INBOUNDED→READY→OUTBOUNDED→CLOSED (+CANCELLED/RETURNED)"],["sku","→product_ref","부모 해석 후 SKU"],["original_sku","text","고객이 산 Variation SKU 기록 보존"],["qty_ordered/inbounded/outbounded","int","부분 입출고 추적 — 불변식 강제"],["sourcing_route","enum","JIT/EXISTING_INVENTORY/WHOLESALE/BRAND_PARTNERSHIP"],["wc_order_id + wc_item_id","text?","커머스 주문/라인 링크 — 라인 레벨이라 split/merge 모두 표현"],["jit_sourcing_cost","numeric?","JIT 발주 라인 원가 (FR-M.4, 7/14 미팅 — 수동→익스텐션 자동 파싱, COGS 원천)"],["version","int","스테이션 간 이중 스캔 거부"]],rel:["wms_order","product_ref","reservation","tracking_number","missing_tracking_item"]},
-{id:"order_hold",g:"B",why:"Hold 이력. 누가·언제·왜 걸고 풀었는지 — 활성 hold가 Outbound 버튼 비활성 조건.",fr:["FR-F.5"],f:[["order_id","→wms_order",""],["reason","enum","CANCEL_REQUEST/ADDRESS_CHANGE/OTHER"],["placed_by / released_by","→app_user","CS 감사"],["placed_at / released_at","timestamptz","에이징 SLA"]],rel:["wms_order"]},
-{id:"order_comment",g:"B",why:"오더 코멘트 — 슬랙에 흩어지던 히스토리를 오더 위로. 세 화면(Order/ViewOrders/RTO)이 이 한 테이블을 공유.",fr:["FR-0.1","FR-0.4"],f:[["order_id","→wms_order",""],["author_id","→app_user",""],["body","text","raw 보존 (AI 학습 인풋)"]],rel:["wms_order","comment_mention"]},
-{id:"comment_mention",g:"B",why:"@멘션 정규화. 안읽음 배지 = read_at IS NULL 쿼리 한 번. 슬랙 전송 실패도 여기 기록(무음 유실 방지).",fr:["FR-0.2","FR-0.3","EC-20"],f:[["comment_id","→order_comment",""],["mentioned_user_id","→app_user",""],["read_at","timestamptz?","안읽음 배지"],["slack_notified_at / slack_error","...","전송 실패 가시화"]],rel:["order_comment"]},
-{id:"stock_movement",g:"C",why:"append-only 원장 = 유일한 진실. 수정·삭제 금지, 취소도 새 행. 인바운드 취소 = INBOUND_CANCEL + RELEASE 두 줄(절대 합치지 않음). pending-confirm 짝 검사는 집계 쿼리로 대체.",fixes:["SSD-4448 근본","pending짝 붕괴"],fr:["FR-E.8","FR-C.13"],f:[["id","bigserial ◆","순서 보장"],["sku + location_id","→","무엇이 어디서"],["delta","int ±","합산하면 그 시점 재고"],["movement_type","enum","INBOUND/OUTBOUND/…/AUDIT_ADJUST/RETURN_RESTOCK/TRANSFER"],["ref_type + ref_id","poly","출처 역추적 (주문라인/입고요청/실사/반품)"],["actor_id + station_id","→","행위자 로그"],["idempotency_key","text UQ","더블클릭·재전송·오프라인 replay 차단"]],rel:["product_ref","location","stock_item"]},
-{id:"stock_item",g:"C",why:"현재 재고 캐시 (SKU×로케이션×lot?). 원장과 같은 트랜잭션에서만 갱신, 매분 대사 잡이 원장 합산과 비교 — '카운터가 진실'이던 V1과 반대.",fr:["FR-E.1","NFR 드리프트≤1분"],f:[["sku + location_id (+lot_id?)","UQ","국가랙 복수 로케이션 = 행 여러 개 (A2)"],["on_hand","int","실물 수량"],["reserved","int","ON_HAND 예약만 (JIT 미포함 — A10)"],["version","int","낙관락"]],rel:["product_ref","location","reservation","stock_movement","stock_lot"]},
-{id:"reservation",g:"C",why:"예약 일급 엔티티 — SSD-4448을 구조적으로 죽이는 테이블. 취소/환불(부분 포함)이 오면 라인 FK로 ACTIVE 예약을 조인 한 번에 찾아 해제. V1의 'PENDING 무브먼트 역추적 매칭' 해킹 제거.",fixes:["SSD-4448 구조적 해결"],fr:["FR-E.4","FR-E.9","EC-4"],f:[["order_line_id","→order_line","무엇을 위한 예약인지 — V1에 없던 직접 링크"],["kind","enum","ON_HAND / JIT_COMMITTED — available 산식 보존 (A10)"],["stock_item_id","→stock_item?","로케이션 핀 (피킹 시점 확정 가능)"],["qty","int",""],["state","enum","ACTIVE/RELEASED/CONSUMED"],["released_reason","enum?","SHIPPED/CANCELLED/REFUNDED/MANUAL — 감사"]],rel:["order_line","stock_item"]},
-{id:"shipment",g:"D",why:"배송 실행 기록 — 주문이 아님. 캐리어 주문은 그들 시스템의 그들 레코드이고, 우리는 그리로의 사상(carrier_order_id+트래킹)만 보유. 상태는 웹훅 미러(매핑 테이블로 격리, 내부 상태머신에 직접 안 섞음). 주문 1→배송 N (YUN+Deleo 분할).",fr:["FR-L.4","FR-B.6","§1.5"],f:[["order_id","→wms_order",""],["carrier","enum","YUN/DELEO/PARXL/FEDEX (7/21 FedEx 도입 진행 — 확장 가능하게)"],["carrier_order_id","text?","캐리어측 주문 참조 — 우리가 변이하지 않음"],["label_url","text?","라벨 재출력 감사"],["print_idempotency_key","text?","자동출력 이중 방지"],["close_batch_id","→close_batch?","마감 포함 여부"]],rel:["wms_order","shipment_box","close_batch"]},
-{id:"shipment_box",g:"D",why:"멀티박스. 마감 스캔·박스 순번·박스당 트래킹의 단위.",fr:["FR-L.4","FR-F.4"],f:[["shipment_id","→shipment",""],["box_seq","int","마감 스캔 순번 대조"]],rel:["shipment","tracking_number","close_batch_scan"]},
-{id:"tracking_number",g:"D",why:"모든 트래킹의 단일 인덱스. 출고 송장/JIT 소싱 입고/반품/라스트마일이 전부 한 테이블 — 스캔하면 종류 무관 한 번에 해석. V1의 '월별 GSI 스캔으로 트래킹 찾기' 제거 = P95 200ms의 핵심.",fixes:["V1 트래킹 5곳 분산"],fr:["A5","FR-C.17","FR-C.6"],f:[["number","text IDX","스캔 입력값"],["carrier","enum","YUN/DELEO/PARXL/FEDEX/COUPANG/OTHER"],["kind","enum","OUTBOUND/SOURCING_INBOUND/RETURN/LAST_MILE"],["ref_type + ref_id","poly","박스/주문라인/입고요청라인/반품"]],rel:["shipment_box","order_line","inbound_request_line","order_return"]},
-{id:"scan_event",g:"D",why:"스캔 텔레메트리. 실패·중복·경고 스캔까지 전부 기록(재고 변화가 아니라서 원장과 별개). 플로팅 최근 스캔 패널 + 일별 export + 미인식 스캔은 트래킹 미입력 플로우 입구.",fr:["FR-C.14","FR-L.7"],f:[["actor_id + station_id","→","누가 어디서"],["raw_barcode","text","입력 원문"],["resolved_type / resolved_ref_id","poly?","해석 결과"],["outcome","enum","MATCHED/UNRECOGNIZED/DUPLICATE/WARNING"]],rel:["app_user"]},
-{id:"close_batch",g:"D",why:"마감. 스프레드시트+Apps Script 마감을 시스템으로. 확정 시점에 범위 스냅샷 잠금(마감 후 아웃바운드 취소 차단).",fr:["FR-F.4","EC-2"],f:[["operator_id","→app_user",""],["manual_count","int","마감 전 수동 카운팅"],["status / confirmed_at","...","정확 일치+경고 0에서만 확정"]],rel:["close_batch_scan","shipment"]},
-{id:"close_batch_scan",g:"D",why:"마감 스캔 행. UNIQUE(batch, box_seq)가 중복 스캔을 DB에서 차단, 경고는 행에 기록 → 음성 알림 트리거.",fr:["FR-F.4","EC-13"],f:[["batch_id + box_seq","UQ","중복 이중 카운트 금지"],["tracking_number","text",""],["warning","enum?","PROCESSING/DUPLICATE/UNKNOWN_ORDER"]],rel:["close_batch","shipment_box"]},
-{id:"order_return",g:"D",why:"반품 기록. 스캔→재고 편입까지. grading(재판매/격리/폐기)으로 손실 KPI 반영 — 딘 답변 대기.",fr:["FR-C.16","EC-24"],f:[["order_id","→wms_order",""],["scanned_tracking","text","라스트마일 바코드 조회"],["grading","enum?","RESELLABLE/QUARANTINE/WRITE_OFF"],["memo","text",""],["restock_location_id","→location?",""]],rel:["wms_order","tracking_number"]},
-{id:"inbound_request",g:"E",why:"모든 입고의 단일 관문. 소싱루트 3종 + 원가(COGS 원천) + 발주 대사. 스캔 시 소싱루트 배지의 출처.",fr:["FR-I.1~4"],f:[["inbound_no","text UQ","YYYYMMDDNNNN 자동 발번"],["sourcing_route","enum","SMART_BUY/WHOLESALE/BRAND_PARTNERSHIP"],["supplier_id","→supplier","필수"],["po_id","→purchase_order?","스마트바이만"],["received_date","date","자동"]],rel:["inbound_request_line","supplier","purchase_order"]},
-{id:"inbound_request_line",g:"E",why:"입고 요청 라인. 예정 vs 실입고 분리가 부분 입고·미도착 추적의 근거.",fr:["FR-I.2","FR-F.6"],f:[["sku","→product_ref",""],["qty_expected / qty_received","int","부분 입고 추적"],["unit_cost","numeric","필수 — 실사 손실액·FIFO 원천"],["is_foc","bool","무상(FOC)"],["jit_price","numeric?","옵션"]],rel:["inbound_request","tracking_number"]},
-{id:"supplier",g:"E",why:"공급사 정규화 — 입고 요청 필수 필드.",fr:["FR-I.2"],f:[["name","text",""]],rel:["inbound_request"]},
-{id:"purchase_order",g:"E",why:"Procurement Hub 접점 — phase-2. 지금은 껍데기(id/supplier/status)만 만들어 FK 자리 확보. FIFO/DOH/Buy Alert는 나중에 이 위에.",fr:["FR-J.1 (phase-2)"],f:[["supplier_id","→supplier",""],["status","enum",""]],rel:["inbound_request","supplier"]},
-{id:"audit_session",g:"F",why:"월 재고 실사 세션. 시작 시점 시스템 수량 스냅샷(실사 중 출고 오염 방지) + 승인자 기록(재무 엄밀성).",fr:["FR-E.3a","EC-15"],f:[["started_by / signed_off_by","→app_user","KPI 책임"],["status","enum","OPEN/CLOSED"]],rel:["audit_line"]},
-{id:"audit_line",g:"F",why:"실사 라인. 차이×원가 스냅샷 = 손실액. 확정 시 AUDIT_ADJUST 원장 이벤트로만 재고 반영.",fr:["FR-E.3a","EC-16"],f:[["session_id","→audit_session",""],["sku + location_id","→","로케이션 순 워크스루"],["system_qty","int","세션 시작 스냅샷"],["counted_qty","int","실물"],["unit_cost_snapshot","numeric","사후 불변 손실액"],["reason_code","enum?","조정 사유 (재무 감사)"]],rel:["audit_session","stock_movement"]},
-{id:"missing_tracking_item",g:"F",why:"트래킹 미입력 리스트. 스캔 인식 실패→제품 추정 입력(+사진)→PIC 배정→해결. 의심 오더 매칭 확정 시 라인 FK 채움.",fr:["FR-F.2","FR-F.3"],f:[["guessed_sku / photo_url","...","자동완성 입력 + 사진"],["pic_user_id","→app_user","PIC별 그룹"],["status","enum","OPEN/RESOLVED"],["resolved_tracking","text?",""],["order_line_id","→order_line?","매칭 확정 시"]],rel:["order_line","app_user"]},
-{id:"wc_sync_outbox",g:"X",why:"WooCommerce 동기화 아웃박스. WMS 트랜잭션과 WC API 호출 분리 — 스캔이 WC 속도에 안 묶임(현행 '저장 한참 로딩'의 원인 제거). 재시도·멱등·충돌 해소의 집행점.",fr:["FR-L.8"],f:[["aggregate_type / aggregate_id","...","무엇의 변경인지"],["event_type","text","status_change 등"],["payload","jsonb",""],["status / attempts","...","재시도 관리"]],rel:["wms_order"]},
-{id:"app_user",g:"X",why:"사용자/역할. 행위자 로그·권한 매트릭스의 전제. 스테이션 공유 계정 문제로 actor와 station 분리 기록.",fr:["§2 권한 갭"],f:[["role","enum","OPERATOR/MANAGER/CS/MARKETING/BUYER/ADMIN"],["slack_user_id","text?","멘션 알림"]],rel:["order_comment","scan_event","order_hold"]}
+{id:"product_ref",g:"A",absorb:["product_barcode"],why:"제품 참조 미러. Variation→Variable 부모 관계·pack 수량이 여기 있어 재고가 항상 부모 SKU로만 기록. 듀얼 바코드는 인덱스 컬럼 2개로 흡수.",fixes:["SSD-2780 유령품절"],fr:["FR-K.1","FR-L.13"],f:[["sku","text ◆","WMS 전체 제품 식별자"],["parent_sku","text?","Variation이면 부모 Variable SKU — 재고는 항상 부모로"],["product_type","enum","SIMPLE/VARIABLE/VARIATION — 입고 시 분기"],["pack_size","int","1+1·2개입 수량 환산 + 송장 qty 강조"],["barcode_ean","text? IDX","일반 EAN — 스캔 리졸버 1차 조회"],["barcode_coupang","text? IDX","쿠팡 바코드 — 듀얼 바코드(FR-K.1)"],["brand","text","송장 브랜드 항상 노출 (이름 파싱 금지)"],["display_name(_ko)","text","한글 우선 + 영문 fallback"],["warehouse_short_name","text?","100mm 라벨 폭용"],["customs_name","text?",'통관 표기 — "(+ sample set)" 대상'],["default_unit_cost","numeric?","실사 손실액 fallback"]],rel:["order_line","stock_item","stock_movement"]},
+{id:"location",g:"A",why:"로케이션 마스터 — 피킹 순서·국가랙·LED 슬롯 등 로케이션 자체 속성의 집.",fr:["FR-E.2","FR-D.1","FR-K.3"],f:[["code","text UQ","A1-1-1 포맷 — CSV 검증 대상"],["country_rack","text?","국가별 랙 분리"],["pick_sequence","int","피킹 리스트/실사 정렬 키"],["led_slot_id","text?","phase-2 아두이노 자리"]],rel:["stock_item","stock_movement"]},
+{id:"wms_order",g:"B",absorb:["order_hold"],why:"풀필먼트 주문 = 우리가 소유하는 유일한 주문(§1.5). 독립 발번, 커머스 링크는 라인 레벨 M:N. hold는 컬럼으로 흡수(이력은 시스템 코멘트).",fixes:["SSD-4269 거대문서 쓰기"],fr:["§1.5","FR-L.10","FR-F.5"],f:[["id","text ◆","독립 발번 — WC 번호 빌려쓰기 금지 (split/merge M:N)"],["channel","enum","WC/MARKETING_CSV/CREATORHUB"],["country_code","text","국가랙·EU 샘플 제외"],["rollup_status","enum","라인 파생 요약 캐시 — 진실은 라인"],["is_marketing / is_mystery_box","bool","RTO 색/탭 + 샘플 룰"],["hold_reason / held_by / held_at","enum?/→/ts?","활성 hold — Outbound 차단 조건. 이력은 시스템 코멘트"],["pic_user_id","→app_user?","트래킹 미입력 PIC 그룹핑"],["version","int","낙관락"]],rel:["order_line","order_comment","shipment"]},
+{id:"order_line",g:"B",keep:true,absorb:["reservation","order_return"],why:"상태머신의 척추 [사수]. 입출고의 물리 현실은 제품 단위(A1). 예약을 컬럼으로 흡수 — 취소/환불 시 라인에서 바로 해제 + 원장 RELEASE 한 트랜잭션 = SSD-4448 구조적 해결. 반품 메타도 jsonb 흡수.",fixes:["SSD-4448 해결","V1 라인상태 부재"],fr:["FR-L.3","FR-M.4","A10"],f:[["order_id","→wms_order",""],["line_status","enum","ORDERED→RESERVED→AWAITING_INBOUND→INBOUNDED→READY→OUTBOUNDED→CLOSED (+CANCELLED/RETURNED)"],["sku","→product_ref","부모 해석 후 SKU (SSD-2780)"],["original_sku","text","고객이 산 Variation SKU 보존"],["qty_ordered/inbounded/outbounded","int","부분 입출고 — 불변식 강제"],["sourcing_route","enum","JIT/EXISTING_INVENTORY/WHOLESALE/BRAND_PARTNERSHIP — V1 '' 해킹 제거"],["qty_reserved","int","예약 흡수 — 드릴다운 = WHERE sku AND qty_reserved>0"],["reserve_kind","enum?","ON_HAND / JIT_COMMITTED — available 산식 보존 (A10)"],["reserved_stock_item_id","→stock_item?","어느 로케이션 재고를 잡았는지 핀 (EC-22)"],["wc_order_id + wc_item_id","text?","커머스 라인 링크 — split/merge M:N (§1.5)"],["jit_sourcing_cost","numeric?","JIT 발주 라인 원가 (FR-M.4, 7/14 미팅)"],["return_info","jsonb? {}","반품 메타(메모·grading·재입고 로케이션) — 상태 전이+원장과 세트"],["version","int","스테이션 간 이중 스캔 거부 (EC-1)"]],rel:["wms_order","product_ref","stock_item","tracking_number","scan_event"]},
+{id:"order_comment",g:"B",absorb:["comment_mention"],why:"오더 코멘트 — 슬랙에 흩어지던 히스토리를 오더 위로. hold/반품 등 시스템 이벤트도 시스템 코멘트로 남아 타임라인이 됨. 멘션은 jsonb 흡수.",fr:["FR-0","EC-20"],f:[["order_id","→wms_order",""],["author_id","→app_user","시스템 이벤트면 system"],["body","text","raw 보존 (AI 학습 인풋)"],["mentions","jsonb {}","[{user_id, read_at, slack_status}] — 안읽음 배지 = jsonb 인덱스, 슬랙 실패 기록"]],rel:["wms_order","app_user"]},
+{id:"stock_movement",g:"C",keep:true,why:"append-only 원장 = 유일한 진실 [사수 — 이게 없으면 V2를 하는 이유가 없음]. 수정·삭제 금지, 취소도 새 행. 인바운드 취소 = INBOUND_CANCEL + RELEASE 두 줄.",fixes:["SSD-4448 근본","pending짝 붕괴"],fr:["FR-E.8","FR-C.13"],f:[["id","bigserial ◆","순서 보장"],["sku + location_id","→","무엇이 어디서"],["delta","int ±","합산하면 그 시점 재고"],["movement_type","enum","INBOUND/OUTBOUND/INBOUND_CANCEL/OUTBOUND_CANCEL/RESERVE/RELEASE/AUDIT_ADJUST/RETURN_RESTOCK/TRANSFER"],["ref_type + ref_id","poly","출처 역추적 (주문라인/입고요청/실사/수동)"],["actor_id + station_id","→","행위자 로그 (FR-C.13)"],["idempotency_key","text UQ","더블클릭·재전송·오프라인 replay를 DB에서 차단"]],rel:["product_ref","location","stock_item","audit_session"]},
+{id:"stock_item",g:"C",keep:true,why:"재고 캐시 (SKU×로케이션) [사수 — 캐시/진실 구분이 곧 정합성 모델]. 원장과 같은 트랜잭션에서만 갱신, 매분 대사 잡이 드리프트 감지(≤1분). 국가랙 복수 로케이션(A2) = 행 여러 개.",fr:["FR-E.1","NFR"],f:[["sku + location_id","UQ","(A12 결정 시 lot_id 추가 자리)"],["on_hand","int","실물 수량"],["reserved","int","ON_HAND 예약만 (JIT 미포함 — A10)"],["version","int","낙관락"]],rel:["product_ref","location","stock_movement","order_line"]},
+{id:"shipment",g:"D",absorb:["shipment_box"],why:"배송 실행 기록 — 주문 아님(§1.5). 캐리어 주문은 그들 레코드, 우리는 사상(carrier_order_id)만. 상태는 웹훅 미러(매핑 격리). 박스는 tracking_number 행으로 흡수.",fr:["§1.5","FR-L.4","FR-B.6"],f:[["order_id","→wms_order",""],["carrier","enum","YUN/DELEO/PARXL/FEDEX (7/21 FedEx 도입 — 확장 가능하게)"],["carrier_order_id","text?","캐리어측 주문 참조 — 우리가 변이하지 않음"],["label_url","text?","라벨 재출력 감사"],["print_idempotency_key","text?","자동출력 이중 방지"],["close_batch_id","→close_batch?","마감 포함 여부"]],rel:["wms_order","tracking_number","close_batch"]},
+{id:"tracking_number",g:"D",keep:true,absorb:["shipment_box"],why:"만능 인덱스 [사수 — 스캔 P95 200ms의 핵심]. 출고 송장/JIT 소싱 입고/반품/라스트마일 전부 한 테이블, (number) 인덱스 한 번으로 즉시 해석. box_seq로 박스 개념까지 흡수.",fixes:["V1 트래킹 5곳 분산"],fr:["A5","FR-C.17","FR-L.4"],f:[["number","text IDX","스캔 입력값"],["carrier","enum","YUN/DELEO/PARXL/FEDEX/COUPANG/OTHER"],["kind","enum","OUTBOUND/SOURCING_INBOUND/RETURN/LAST_MILE"],["ref_type + ref_id","poly","shipment/주문라인/입고요청라인"],["box_seq","int?","OUTBOUND일 때 박스 순번 — shipment_box 대체 (멀티박스 FR-L.4)"]],rel:["shipment","order_line","inbound_request_line","close_batch"]},
+{id:"close_batch",g:"D",absorb:["close_batch_scan"],why:"마감 — 스프레드시트+Apps Script 마감의 시스템화. 스캔 행은 jsonb 흡수(일 수백 건 규모, 중복/경고 검사는 서비스 레이어 + 음성 알림). 확정 시 범위 스냅샷 잠금.",fr:["FR-F.4","EC-2","EC-13"],f:[["operator_id","→app_user",""],["manual_count","int","마감 전 수동 카운팅"],["status / confirmed_at","...","정확 일치+경고 0에서만 확정"],["scans","jsonb {}","[{box_seq, tracking, warning, ts}] — 경고=음성 알림 트리거"]],rel:["shipment","app_user"]},
+{id:"scan_event",g:"D",absorb:["missing_tracking_item"],why:"스캔 텔레메트리 + 미입력 워크플로우. 모든 스캔(성공·실패·중복·경고) 로그 — 플로팅 패널·일별 export. 미인식 스캔 행 = 곧 트래킹 미입력 리스트 아이템(개념 통합).",fr:["FR-C.14","FR-F.2","FR-F.3"],f:[["actor_id + station_id","→","누가 어디서"],["raw_barcode","text","입력 원문"],["outcome","enum","MATCHED/UNRECOGNIZED/DUPLICATE/WARNING"],["resolved_type / resolved_ref_id","poly?","해석 결과"],["status","enum?","UNRECOGNIZED일 때 OPEN/RESOLVED — 미입력 리스트"],["pic_user_id","→app_user?","PIC 배정"],["guessed_product","jsonb? {}","브랜드/제품명/사이즈 추정 입력 + photo_url"],["resolved_tracking","text?","PIC가 입력한 트래킹"],["order_line_id","→order_line?","의심 오더 매칭 확정 시"]],rel:["app_user","order_line"]},
+{id:"inbound_request",g:"E",absorb:["supplier","purchase_order"],why:"모든 입고의 단일 관문(스마트바이/홀세일/브랜드 파트너십) — 소싱루트 배지·COGS 원천. supplier/PO는 텍스트 컬럼으로(phase-2 Procurement Hub 때 테이블 승격).",fr:["FR-I.1~4"],f:[["inbound_no","text UQ","YYYYMMDDNNNN 자동 발번"],["sourcing_route","enum","SMART_BUY/WHOLESALE/BRAND_PARTNERSHIP"],["supplier_name","text","자동완성 — supplier 테이블은 phase-2"],["po_ref","text?","Procurement Hub 접점 — PO 테이블은 phase-2"],["received_date","date","자동"]],rel:["inbound_request_line"]},
+{id:"inbound_request_line",g:"E",why:"입고 라인 — 헤더/라인 분리는 진짜 필요(요청당 N SKU). 예정 vs 실입고 분리가 부분 입고·미도착 추적의 근거.",fr:["FR-I.2","FR-F.6"],f:[["sku","→product_ref",""],["qty_expected / qty_received","int","부분 입고 추적"],["unit_cost","numeric","필수 — 실사 손실액·FIFO 원천"],["is_foc","bool","무상(FOC)"],["jit_price","numeric?","옵션"]],rel:["inbound_request","product_ref","tracking_number"]},
+{id:"audit_session",g:"F",absorb:["audit_line"],why:"월 재고 실사 — 라인은 jsonb 흡수(월 1회 저빈도). system_qty는 세션 시작 스냅샷(실사 중 출고 오염 방지), 확정 시 차이분만 원장 AUDIT_ADJUST로 반영. 손실액 합계 = 매니저 KPI.",fr:["FR-E.3a","EC-15","EC-16"],f:[["started_by / signed_off_by","→app_user","KPI 책임 + 재무 승인"],["status","enum","OPEN/CLOSED"],["lines","jsonb {}","[{sku, location, system_qty(스냅샷), counted_qty, unit_cost_snapshot, reason}]"],["total_loss","numeric","합계 손실액 — 목표 0"]],rel:["stock_movement","app_user"]},
+{id:"wc_sync_outbox",g:"F",why:"WooCommerce 동기화 아웃박스 — WMS 트랜잭션과 WC API 분리. WC가 느려도 스캔 스테이션 안 멈춤(현행 저장 지연의 원인 제거). 재시도·멱등·충돌 해소 집행점.",fr:["FR-L.8"],f:[["aggregate_type / aggregate_id","...","무엇의 변경"],["event_type","text","status_change 등"],["payload","jsonb {}",""],["status / attempts","...","재시도 관리"]],rel:["wms_order"]},
+{id:"app_user",g:"F",absorb:["role"],why:"사용자 — 행위자 로그·권한 매트릭스의 전제. role은 컬럼으로. 스테이션 공유 계정 때문에 actor/station 분리 기록(식별 방식 딘 답변 대기).",fr:["FR-M.7"],f:[["role","enum","OPERATOR/MANAGER/CS/MARKETING/BUYER/ADMIN"],["slack_user_id","text?","멘션·알림"]],rel:["order_comment","scan_event","close_batch"]}
 ];
 const groupsEl=document.getElementById('groups');
 const byG={};T.forEach(t=>{(byG[t.g]=byG[t.g]||[]).push(t)});
@@ -106,9 +123,9 @@ Object.keys(G).forEach(g=>{
   const grid=document.createElement('div');grid.className='cards';
   byG[g].forEach(t=>{
     const c=document.createElement('div');c.className='card';c.id='tbl-'+t.id;c.style.setProperty('--gc',G[g].color);
-    let badges=(t.fixes||[]).map(x=>`<span class="fixes">🩹 ${x}</span>`).join('')+(t.fr||[]).map(x=>`<span class="fr">${x}</span>`).join('');
-    let rows=t.f.map(f=>`<tr><td class="k">${f[0].replace('◆','<span class=pk>◆</span>').replace(/→/g,'<span class=fk>→</span>')}</td><td class="t">${f[1].replace('◆','<span class=pk>◆</span>').replace(/→/g,'<span class=fk>→</span>')}</td><td class="w">${f[2]}</td></tr>`).join('');
-    c.innerHTML=`<h3>${t.id}</h3><div class="why">${t.why}</div><div>${badges}</div><table>${rows}</table>`;
+    let badges=(t.absorb||[]).map(x=>`<span class="absorb">⊕ ${x} 흡수</span>`).join('')+(t.fixes||[]).map(x=>`<span class="fixes">🩹 ${x}</span>`).join('')+(t.fr||[]).map(x=>`<span class="fr">${x}</span>`).join('');
+    let rows=t.f.map(f=>`<tr><td class="k">${f[0].replace('◆','<span class=pk>◆</span>').replace(/→/g,'<span class=fk>→</span>')}</td><td class="t">${f[1].replace('◆','<span class=pk>◆</span>').replace(/→/g,'<span class=fk>→</span>').replace('{}','<span class=jb>{}</span>')}</td><td class="w">${f[2]}</td></tr>`).join('');
+    c.innerHTML=`<h3>${t.id}${t.keep?'<span class="keep">사수</span>':''}</h3><div class="why">${t.why}</div><div>${badges}</div><table>${rows}</table>`;
     c.onclick=(e)=>{e.stopPropagation();select(t)};
     grid.appendChild(c);
   });
@@ -128,6 +145,7 @@ function clearSel(){document.querySelectorAll('.card').forEach(c=>c.classList.re
 document.getElementById('clearBtn').onclick=clearSel;
 document.body.addEventListener('click',clearSel);
 document.getElementById('whyBtn').onclick=(e)=>{e.stopPropagation();document.body.classList.toggle('showwhy');e.target.classList.toggle('active')};
+document.getElementById('mapBtn').onclick=(e)=>{e.stopPropagation();document.body.classList.toggle('showmap');e.target.classList.toggle('active')};
 </script>
 </body>
 </html>
