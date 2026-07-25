@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OMS/WMS 2.0 스키마 (v9.4 — 9 테이블)</title>
+<title>OMS/WMS 2.0 스키마 (v10 — 9 테이블 + 행동 규칙 계약)</title>
 <style>
   :root{
     --bg:#0f1117; --panel:#171a23; --card:#1c2030; --border:#2a3045; --text:#e6e9f2; --muted:#8b93a7;
@@ -51,6 +51,10 @@
   body.showmap .mapbox{display:block;}
   .compatbox{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:20px; font-size:12.5px; display:none;}
   body.showcompat .compatbox{display:block;}
+  .contractbox{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:20px; font-size:12.5px; display:none;}
+  body.showcontract .contractbox{display:block;}
+  .contractbox table td{font-size:11.5px;}
+  .contractbox h4{font-size:12.5px; margin:10px 0 4px;}
   .compatbox table td{font-size:11.5px;}
   .mapbox table td{font-size:11.5px;}
   .mapbox h4{font-size:12.5px; margin:10px 0 4px;}
@@ -66,7 +70,7 @@
 </style>
 </head>
 <body>
-<h1>OMS/WMS 2.0 — 데이터 스키마 <span style="font-size:12px;color:var(--muted);font-weight:400">(v9.4 · 라인 total_quantity 분리(민철 정정) · SSD-5345)</span></h1>
+<h1>OMS/WMS 2.0 — 데이터 스키마 <span style="font-size:12px;color:var(--muted);font-weight:400">(v10 · 시맨틱 전수조사 반영 · SSD-5345)</span></h1>
 <div class="sub">테이블 카드 클릭 = 관계 하이라이트 · <span style="color:var(--b)">◆</span>=PK · <span style="color:var(--d)">→</span>=FK · <span style="color:var(--f)">{}</span>=jsonb · PostgreSQL(Cloud SQL) 가정 · 전 테이블 공통 created_at/occurred_at</div>
 <div class="stats">
   <div class="stat">테이블 <b>9</b> <span style="color:var(--muted)">(v1 26 → v2 16 → v5 6 → 리뷰 v6 14 → 민철 챌린지 v9 9)</span></div>
@@ -78,10 +82,37 @@
   <button id="exBtn">실전 예시 (우리 실측)</button>
   <button id="flowBtn">주문 #407847의 일생</button>
   <button id="compatBtn">V1 호환 맵 (기존 오더 데이터 전량)</button>
+  <button id="contractBtn">행동 규칙 계약 (시맨틱 전수조사)</button>
   <button id="mapBtn">결정 히스토리</button>
   <button id="clearBtn">선택 해제</button>
 </div>
 <div class="notable"><b>테이블 없이 해결하는 것들 (v9 확정)</b> — <b>카탈로그(바코드·parent_sku·pack_size)</b>: 미러 없음 — 기존 카탈로그를 그때그때 직접 조회(V1도 이미 스캔마다 WP 조회, 단건 lookup 수 ms. 핫 SKU는 앱 메모리 캐시 TTL 몇 분) · <b>WC 동기화</b>: 그때그때 건별 비동기 호출(동시성 캡 5~10, 일괄은 WC batch API 100건/요청) + 시간당 스위퍼가 WMS≠WC 차이 재푸시(유실 자가 치유, 터미널 다운그레이드 가드는 코드 한 줄) · <b>멘션</b>: 슬랙 알림만(인앱 배지 없음) · <b>로케이션</b>: 코드 문자열 · <b>유저</b>: 기존 어드민 계정 텍스트 · <b>공급사/PO</b>: 텍스트(phase-2 승격) · <b>[OOS 명시 — 기존 시스템 유지]</b> 환불 승인 상태머신(RefundApproval 저장소+Redis 락, 커머스/CS 영역) · Gigwork dispatch(Spanner, omsOrderRef 링크로만 연결) · provider 상세(Parxl 통관·Yun trackInfo 등 = 각 3PL이 SoT, 재조회 계약 문서화)</div>
+<div class="contractbox">
+  <b>행동 규칙 계약 (Behavioral Contract) — 시맨틱 전수조사 결과 (Claude×Codex 코드 라인 대조, 2026-07-26)</b> <span style="color:var(--muted)">— 스키마 그림만으론 안 보이는, 코드가 지켜온 규칙들. 구현·마이그레이션이 이 계약을 어기면 재고/RTO/출고가 조용히 깨진다.</span>
+  <h4>🔴 v10 결정 — 마케팅 오더 포맷 폐지 (민철 확정, 7/17 미팅 실측 근거)</h4>
+  <table>
+    <tr><td class="k">MKT-{campaign}__{influencer} id 인코딩</td><td><b>폐지.</b> id에 의미 인코딩 금지 — 캠페인/인플루언서는 segment 컬럼으로, 파싱 콜사이트 3곳(UpdateFulfilmentOrderStatusHandler·CreateFulfilmentOrderHandler·MarketingReceivedTransitionLink)을 컬럼 조회로 이관. <b>실측 증상(7/17 Victoria)</b>: 마케팅 오더 캔슬 시 오류(숫자-WC-id 분기 붕괴 — 현장에서 「캔슬 누르면 오류 떠요」), 풀필먼트 「이 형식으로는 일을 못 한다」, 7/20 「주문 집계에 마케팅 주문 혼재」</td></tr>
+  </table>
+  <h4>서비스-레이어 규칙 7 (구현 계약)</h4>
+  <table>
+    <tr><td class="k">R1 pack 곱셈 정확히 1회</td><td>유입 경계에서만. <b>V1 실버그: 마케팅 경로는 calculator 미경유</b>(CreateMarketingFulfilmentOrderHandler:169) → quantity 의미가 채널마다 다름. V2는 전 채널 동일 경로 강제 — 아니면 2팩 마케팅 SKU 절반 예약=oversell</td></tr>
+    <tr><td class="k">R2 출고 = 예약 상태전이</td><td>ACTIVE→CONSUMED same-txn으로만 — 가용성 재체크 금지. V1의 자기 예약 제외 항(OutboundStockHandler:56 +reservedForThisOrder)을 산식이 아니라 모델로 해소. 어기면 예약된 주문이 자기 출고를 막음</td></tr>
+    <tr><td class="k">R3 Existing-Inventory 라인 랜딩</td><td>예약 성공 시 line_status=INBOUNDED (물리 스캔 불요 — V1 OrderStockReservationHandler:53 계승). RTO 조건 = 전 라인 ∈ {INBOUNDED, READY}. 어기면 재고 보유 주문이 RTO에서 영구 실종</td></tr>
+    <tr><td class="k">R4 wc_status 단일 writer</td><td>WC-push 로직만 씀(rollup 트리거 금지) + 터미널 다운그레이드 금지 + prepare-shipment→processing 금지 + 커스텀 어휘(prepare-shipment/shipped) 포함 (UnifiedToWcStatusDecider 계승)</td></tr>
+    <tr><td class="k">R5 merge/clone</td><td>merge = 라인 re-parent(order_id UPDATE — 예약·원장 자동 추종, V1은 유령 예약 잔존 실버그). clone = 라인 id 재발급, 예약·트래킹 복사 금지</td></tr>
+    <tr><td class="k">R6 예약 실패 = 명시적 JIT 강등</td><td>V1은 조용히 sourcingRoute='' 강등(OrderStockReservationHandler:98) — V2는 event(ORDER_OP)로 기록</td></tr>
+    <tr><td class="k">R7 조회 캡은 데이터 의미 아님</td><td>V1의 2개월 창(RTO·트래킹 매칭)은 DDB 파티션 부산물 — UI 기본 필터로만. 트래킹 매칭은 kind 스코프 + occurred_at DESC tie-break(재활용 번호 오매칭 방지)</td></tr>
+  </table>
+  <h4>마이그레이션 규칙 6 (변환 스크립트 계약)</h4>
+  <table>
+    <tr><td class="k">M1 수량 재계산 금지</td><td>originalQuantity→qty_ordered, quantity→total_quantity 저장값 그대로. <b>단 하나의 예외</b>: 마케팅 채널 라인은 total_quantity = qty_ordered × pack 재계산(R1의 V1 버그 보정)</td></tr>
+    <tr><td class="k">M2 멱등키 시드</td><td>비즈니스 필드 재계산 금지 — V1 timelineKey(#uuid 포함) 전체를 시드로. 재계산하면 취소-후-재실행 원장행이 키 충돌로 유실</td></tr>
+    <tr><td class="k">M3 MKT- id 해체</td><td>기존 id 파싱 → segment.campaign_id/influencer_id 채움 (이후 포맷 폐지)</td></tr>
+    <tr><td class="k">M4 상태 매핑표</td><td>V1 이진 inboundStatus → 8상태: JIT 미입고=AWAITING_INBOUND(예약분 RESERVED), JIT 입고/Existing-Inventory=INBOUNDED. sourcingRoute: ''→JIT, 'Existing Inventory'(공백 포함)→EXISTING_INVENTORY</td></tr>
+    <tr><td class="k">M5 긱 분할 금액</td><td>저장값 그대로 복사(마지막 라인 라운딩 잔액 보존), pack 비율 역산 금지, 분할 후 수량·금액 합계 불변식 검증</td></tr>
+    <tr><td class="k">M6 이력 re-wire</td><td>머지/클론된 주문의 예약·원장 참조 재배선, productId→sku 해석 실패·짝 안 맞는 pending은 예외 리포트→수동</td></tr>
+  </table>
+</div>
 <div class="compatbox">
   <b>V1 → v9 호환 맵 — 기존 FulfilmentOrder(DDB) 필드 전량이 어디로 가나</b> <span style="color:var(--muted)">(민철 지적 반영: 주소·금액·temporary_location은 v9.1에서 추가 누락 복구)</span>
   <table>
@@ -124,6 +155,11 @@
 </div>
 <div class="mapbox">
   <b>결정 히스토리 — 26개에서 10개까지</b>
+  <h4>🔵 v10 — 시맨틱 전수조사 + MKT- 포맷 폐지 (2026-07-26)</h4>
+  <table>
+    <tr><td class="k">행동 규칙 계약 신설</td><td>서비스 규칙 7 + 마이그레이션 규칙 6 — 코드가 지켜온 시맨틱(pack 1회 곱셈·자기 예약 제외·Existing=INBOUNDED·멱등키 시드 등)을 명문화. V1 실버그 3건 발견(마케팅 pack 미경유·머지 유령 예약·마케팅 캔슬 오류)</td></tr>
+    <tr><td class="k">MKT- id 포맷 폐지</td><td>id 의미 인코딩 금지 → segment.campaign_id/influencer_id (7/17 Victoria 미팅 실측 근거)</td></tr>
+  </table>
   <h4>🔵 v9.2 — 필드 호환 감사 반영 (2026-07-27, Claude Critic × Codex 코드 전수 대조)</h4>
   <table>
     <tr><td class="k">추가 컬럼 7</td><td>order_placed_at(+date/month) · wc_status · updated_at · segment jsonb · flags jsonb · billing 블록 · tracking.notifications jsonb — 테이블 수는 9 유지</td></tr>
@@ -163,7 +199,7 @@
 <script>
 const G = {B:{name:"B. 주문",color:"var(--e)"},C:{name:"C. 재고 — 원장(진실) + 예약 + 밸런스(캐시)",color:"var(--b)"},D:{name:"D. 배송 · 작업 문서",color:"var(--d)"},F:{name:"F. 이벤트 (스캔 로그 + 주문 감사)",color:"var(--c)"}};
 const T = [
-{id:"fulfillment_order",g:"B",absorb:["order_hold","order_comment"],why:"주문 헤더 — 독립 발번, 커머스 링크는 라인 레벨 M:N(주문 2층+실행 1층 모델). hold는 컬럼(이력은 event ORDER_OP), comments는 jsonb 타임라인(태그 시 슬랙 알림만 — 인앱 배지 없음, 민철 확정). WC 상태 동기화는 테이블 없이 건별 비동기 호출+스위퍼.",fixes:["SSD-4269 거대문서 쓰기"],f:[["id","text ◆","독립 발번 — WC 번호 빌려쓰기 금지 (split/merge M:N)"],["channel","enum","WC/MARKETING_CSV/CREATORHUB"],["country_code","text","국가랙·EU 샘플 제외"],["order_placed_at","ts + 파생 date/month","WC 주문 접수시각 — 목록 기본정렬·기간/월 필터의 근간 (V1 orderDate 3필드 승계, 감사 C1: created_at과 다름 — 백필 주문에서 어긋남)"],["wc_status","text","WC 라이프사이클 스냅샷(cancelled/refunded…) — 목록 status 필터 어휘 보존 (rollup_status와 별개 축, 감사 C3)"],["rollup_status","enum","라인 파생 — DB 트리거 유지"],["total_quantity","int","라인 수량 합 — rollup과 같은 트리거가 재계산(증감 카운터 아님 → 드리프트 불가). RTO Total Items(FR-D.1)·피킹 총량·Parxl 무게 계산·긱 페이로드가 읽음 (민철 확정 v9.3)"],["is_marketing / is_mystery_box","bool","RTO 색/탭 + 샘플 룰"],["segment","jsonb? {}","{type: marketing|partnership, brand_slug, brand_name} — V1 map_order_segment(BQ) 승계, 브랜드 귀속 (감사 공통 지적)"],["hold_reason / held_by / held_at","...","활성 hold — Outbound 차단"],["customer / shipping","jsonb {}","고객·배송지·수취인·배송메시지 + billing 블록(청구지·taxId — 통관용, 감사 M1) — 주문 시점 스냅샷"],["amounts","jsonb {}","totalAmount·currency·discount·coupon·shippingTotal — 통관 인보이스·환불 대사 (SoT는 WC)"],["temporary_location","text?","이사 후 3스테이션 임시 선반 (SSD-5261 실존 기능)"],["comments","jsonb {}","[{author, body, type USER/SYSTEM, ts}] — 태그는 슬랙 발송"],["pic_user","text","기존 어드민 계정 텍스트"],["flags","jsonb? {}","nonExistentProduct 등 운영 플래그 (감사 지적 — V1 실존 필드)"],["updated_at","ts","최종 수정 시각 (V1 updatedAt 승계)"],["version","int","낙관락 (코멘트 append는 제외)"]],rel:["fulfillment_order_line","tracking_number","event"]},
+{id:"fulfillment_order",g:"B",absorb:["order_hold","order_comment"],why:"주문 헤더 — 독립 발번, 커머스 링크는 라인 레벨 M:N(주문 2층+실행 1층 모델). hold는 컬럼(이력은 event ORDER_OP), comments는 jsonb 타임라인(태그 시 슬랙 알림만 — 인앱 배지 없음, 민철 확정). WC 상태 동기화는 테이블 없이 건별 비동기 호출+스위퍼.",fixes:["SSD-4269 거대문서 쓰기"],f:[["id","text ◆","독립 발번 — WC 번호 빌려쓰기 금지 (split/merge M:N)"],["channel","enum","WC/MARKETING_CSV/CREATORHUB"],["country_code","text","국가랙·EU 샘플 제외"],["order_placed_at","ts + 파생 date/month","WC 주문 접수시각 — 목록 기본정렬·기간/월 필터의 근간 (V1 orderDate 3필드 승계, 감사 C1: created_at과 다름 — 백필 주문에서 어긋남)"],["wc_status","text","WC 라이프사이클 스냅샷(cancelled/refunded…) — 목록 status 필터 어휘 보존 (rollup_status와 별개 축, 감사 C3)"],["rollup_status","enum","라인 파생 — DB 트리거 유지"],["total_quantity","int","라인 수량 합 — rollup과 같은 트리거가 재계산(증감 카운터 아님 → 드리프트 불가). RTO Total Items(FR-D.1)·피킹 총량·Parxl 무게 계산·긱 페이로드가 읽음 (민철 확정 v9.3)"],["is_marketing / is_mystery_box","bool","RTO 색/탭 + 샘플 룰"],["segment","jsonb? {}","{type: marketing|partnership, brand_slug, brand_name, campaign_id, influencer_id} — 브랜드 귀속 + 캠페인/인플루언서 참조. v10: MKT- id 인코딩 폐지의 대체 (7/17 실측: 캔슬 오류·풀필먼트 작업 불가)"],["hold_reason / held_by / held_at","...","활성 hold — Outbound 차단"],["customer / shipping","jsonb {}","고객·배송지·수취인·배송메시지 + billing 블록(청구지·taxId — 통관용, 감사 M1) — 주문 시점 스냅샷"],["amounts","jsonb {}","totalAmount·currency·discount·coupon·shippingTotal — 통관 인보이스·환불 대사 (SoT는 WC)"],["temporary_location","text?","이사 후 3스테이션 임시 선반 (SSD-5261 실존 기능)"],["comments","jsonb {}","[{author, body, type USER/SYSTEM, ts}] — 태그는 슬랙 발송"],["pic_user","text","기존 어드민 계정 텍스트"],["flags","jsonb? {}","nonExistentProduct 등 운영 플래그 (감사 지적 — V1 실존 필드)"],["updated_at","ts","최종 수정 시각 (V1 updatedAt 승계)"],["version","int","낙관락 (코멘트 append는 제외)"]],rel:["fulfillment_order_line","tracking_number","event"]},
 {id:"fulfillment_order_line",g:"B",keep:true,why:"상태머신의 척추 [사수]. 커머스 주문은 이미 재사용(복사 안 함, id 링크만) — 라인은 창고 작업물이라 WC 행이 될 수 없음(상태·split/merge·예약). 부분 매칭이면 라인을 쪼갠다.",fixes:["SSD-4448","V1 라인상태 부재"],f:[["order_id","→fulfillment_order",""],["line_status","enum","ORDERED→RESERVED→AWAITING_INBOUND→INBOUNDED→READY→OUTBOUNDED→CLOSED (+CANCELLED/RETURNED)"],["sku","text","기존 카탈로그로 부모 해석 (미러 테이블 없음)"],["snapshot","jsonb {}","유입 시점 스냅샷: 이름(한/영)·브랜드·바코드·pack·이미지 + 가격(price/subtotal/tax) + 쿠팡 주문번호 — V1 lineItems 필드 전량 수용"],["original_sku","text","고객이 산 Variation SKU"],["qty_ordered","int","고객 주문 수량 = V1 originalQuantity (팩 단위)"],["total_quantity","int","팩 환산 실물 개수 = V1 LineItem.quantity (qty_ordered × pack_size, 유입 시 계산 저장) — 창고가 세는 단위: 재고 차감·송장 qty 강조·긱워커 표시 (GigWorkerItem.totalQuantity 주석 「Pack-adjusted physical unit count」, 민철 정정 v9.4)"],["qty_inbounded/outbounded","int","실물 단위 기준 부분 입출고 — 불변식: ≤ total_quantity"],["sourcing_route","enum","JIT/EXISTING_INVENTORY/WHOLESALE/BRAND_PARTNERSHIP"],["is_sample","bool","슬립 샘플 행·EU 제외 판정"],["wc_order_id + wc_item_id","text?","커머스 라인 링크"],["jit_sourcing_cost","numeric?","JIT 라인 원가(7/14 미팅) → COGS"],["return_info","jsonb? {}","반품 메타(메모·grading·재입고 로케이션)"],["version","int","스테이션 간 이중 스캔 거부"]],rel:["fulfillment_order","reservation","tracking_number","event"]},
 {id:"stock_movement",g:"C",keep:true,why:"append-only 원장 = 유일한 진실 [사수]. 수정·삭제 금지, 취소도 새 행. 원장은 물리 이동만 — 예약은 reservation이 진실(SoT 모순 해소). 로케이션은 코드 문자열(location 테이블 없음).",fixes:["SSD-4448 근본","pending짝 붕괴"],f:[["id","bigserial ◆","순서 보장"],["sku","text","부모 SKU 문자열 — 카탈로그는 기존 시스템 직접 조회"],["location_code","text","A1-1-1 + 논리 로케이션(3PL#/EXT#)"],["delta","int ±","합산 = 그 시점 on_hand"],["movement_type","enum","INBOUND/OUTBOUND/±CANCEL/AUDIT_ADJUST/RETURN_RESTOCK/TRANSFER"],["unit_cost","numeric?","INBOUND·RETURN_RESTOCK에 기록 — phase-2 FIFO 원천"],["lot_id / expiry","?","nullable 자리 (V1 WMS가 이미 lotCd/expDate 제공)"],["ref_type + ref_id","poly","출처 역추적"],["actor + station_id","text","행위자"],["occurred_at","ts",""],["idempotency_key","text UQ","스캔+generation 파생 — 취소 후 정당 재실행은 새 generation"]],rel:["stock_balance","ops_doc"]},
 {id:"stock_balance",g:"C",why:"현재고 프로젝션 (matview 아님 — 리뷰: refresh 전 스캔분 안 보임). 원장과 같은 트랜잭션에서 upsert → 스캔 직후 즉시 반영. 검증용 원장 합산 뷰는 BI/대사용 별도.",f:[["sku + location_code","UQ","(lot 자리 예약)"],["on_hand","int","원장과 same-txn upsert"],["version","int","낙관락"]],rel:["stock_movement","reservation"]},
@@ -219,6 +255,7 @@ document.getElementById('exBtn').onclick=(e)=>{e.stopPropagation();document.body
 document.getElementById('flowBtn').onclick=(e)=>{e.stopPropagation();document.body.classList.toggle('showflow');e.target.classList.toggle('active')};
 document.getElementById('whyBtn').onclick=(e)=>{e.stopPropagation();document.body.classList.toggle('showwhy');e.target.classList.toggle('active')};
 document.getElementById('compatBtn').onclick=(e)=>{e.stopPropagation();document.body.classList.toggle('showcompat');e.target.classList.toggle('active')};
+document.getElementById('contractBtn').onclick=(e)=>{e.stopPropagation();document.body.classList.toggle('showcontract');e.target.classList.toggle('active')};
 document.getElementById('mapBtn').onclick=(e)=>{e.stopPropagation();document.body.classList.toggle('showmap');e.target.classList.toggle('active')};
 </script>
 </body>
