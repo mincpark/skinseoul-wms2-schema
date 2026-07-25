@@ -53,6 +53,14 @@
   .mapbox{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:20px; font-size:12.5px; display:none;}
   body.showmap .mapbox{display:block;}
   .mapbox table td{font-size:11.5px;}
+  .ex{display:none; margin-top:8px; border-top:1px dashed var(--border); padding-top:8px;}
+  body.showex .ex{display:block;}
+  .ex div{font-size:11.5px; color:var(--muted); margin-bottom:5px; padding-left:14px; position:relative;}
+  .ex div:before{content:"▸"; position:absolute; left:2px; color:var(--e);}
+  .ex b{color:var(--text); font-weight:600;}
+  .flowbox{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:20px; font-size:12.5px; display:none;}
+  body.showflow .flowbox{display:block;}
+  .flowbox td.s{white-space:nowrap; color:var(--e); font-weight:600;}
   .mapbox h4{font-size:12.5px; margin:10px 0 4px;}
 </style>
 </head>
@@ -66,9 +74,24 @@
 </div>
 <div class="toolbar">
   <button id="whyBtn">필드별 "왜" 표시</button>
+  <button id="exBtn">실전 예시 (우리 실측)</button>
+  <button id="flowBtn">주문 #407847의 일생</button>
   <button id="mapBtn">리뷰 판정 (수용 vs 기각)</button>
   <button id="clearBtn">선택 해제</button>
   <span class="hint">dumb-simple 유지: location·supplier·PO·유저 테이블 없음, 저빈도 디테일 jsonb. 단 정합성 선을 넘은 5곳 + 기능 회귀 3곳은 복원.</span>
+</div>
+<div class="flowbox">
+  <b>주문 #407847의 일생 — 한 건이 14개 테이블을 지나가는 실측 워크스루</b> <span style="color:var(--muted)">(와이어프레임 실제 예시 주문 · 라인 3개: JIT 2 + 창고 재고 1 · YUN 출고)</span>
+  <table>
+    <tr><td class="s">1. 주문 유입</td><td>WC 웹훅 → <b>fulfillment_order</b> FO-발번 1행(channel WC, country US) + <b>fulfillment_order_line</b> 3행(카탈로그 조회로 부모 SKU·pack 해석 후 스냅샷) + 재고 있는 1라인은 <b>reservation</b> ACTIVE/ON_HAND(A1-1-1 핀) + <b>order_audit</b> ORDER_RECEIVED(source WOOCOMMERCE)</td></tr>
+    <tr><td class="s">2. JIT 발주</td><td>긱워커가 쿠팡 결제 → line.jit_sourcing_cost ₩12,900 기록(7/14 미팅 요구) + <b>reservation</b> JIT_COMMITTED 2행 + 수 시간 뒤 트래킹 발급 → <b>tracking_number</b> kind SOURCING_INBOUND 2행. 6시간 미입력이면 <b>event_log</b> 기반 AI 알림(7/17 미팅)</td></tr>
+    <tr><td class="s">3. 도착 스캔</td><td>택배 바코드 스캔 → tracking_number 인덱스 1회 히트(V1: 월별 GSI 스캔 수 초) → <b>event_log</b> MATCHED + <b>stock_movement</b> INBOUND(+1, WH#01, 멱등키) + <b>stock_balance</b> +1 (같은 트랜잭션 → 즉시 화면 반영) + reservation kind ON_HAND 전환(같은 트랜잭션 — 순간 oversell 창 차단) + line INBOUNDED</td></tr>
+    <tr><td class="s">4. 마지막 입고</td><td>남은 JIT 1개 도착 → 전 라인 READY → rollup_status 트리거 갱신 → Ready-to-Outbound 목록에 노출(stock_balance·line 인덱스 조회 — V1 실측 ~50초였던 화면)</td></tr>
+    <tr><td class="s">5. 출고</td><td>일괄 아웃바운드 → <b>stock_movement</b> OUTBOUND 3행 + reservation CONSUMED + line OUTBOUNDED + <b>tracking_number</b> kind OUTBOUND(YUN YT-웨이빌, box_seq 1) + 라벨 자동 출력(print 멱등키) + <b>wc_sync_outbox</b> enqueue → 워커가 WC를 prepare-shipment로 (WC가 느려도 스캔 스테이션 무영향)</td></tr>
+    <tr><td class="s">6. 마감</td><td>저녁 마감 스캔 → <b>ops_session</b> CLOSING + <b>ops_session_line</b> 박스행(중복 스캔은 UNIQUE 위반 → 경고+음성) → 정확 일치 확정 → tracking.close_session_id 세팅 → 이후 아웃바운드 취소 차단</td></tr>
+    <tr><td class="s">7. 배송 추적</td><td>YUN 웹훅 PICKED_UP→IN_TRANSIT→DELIVERED → <b>tracking_event</b> 누적(구간별 소요 = Dynamic SLA P70/P90 원천) + unified_status 갱신 + outbox로 WC shipped→completed</td></tr>
+    <tr><td class="s">8. (변형) 부분 환불</td><td>고객이 3개 중 1개 환불 → 그 라인 reservation만 RELEASED(reason REFUNDED) + line CANCELLED + order_audit CANCEL 기록 — <b>SSD-4448(V1에서 reserved 영구 잠김)이 조인 한 번으로 끝나는 지점</b></td></tr>
+  </table>
 </div>
 <div class="mapbox">
   <b>더블체크 판정 — Claude Critic(REJECT, 4 CRITICAL) × Codex(27건, 출하불가) 교차 대조</b>
@@ -120,6 +143,22 @@ const T = [
 {id:"event_log",g:"F",absorb:["scan_event","missing_tracking_item"],why:"스캔 텔레메트리 + 미입력 워크벤치 (WC 아웃박스는 리뷰 반영으로 분리). 보존 정책 자유롭게(오래된 MATCHED 스캔 prune 가능 — OPEN 워크리스트는 보존).",f:[["actor + station_id","text","누가 어디서"],["raw_barcode","text","입력 원문"],["outcome","enum","MATCHED/UNRECOGNIZED/DUPLICATE/WARNING"],["resolved_type / resolved_ref_id","poly?",""],["status / pic_user","...","미인식 워크플로우 OPEN/RESOLVED"],["guessed_product","jsonb? {}","추정 입력 + photo_url"],["resolved_tracking / order_line_id","...","해결 경로"],["occurred_at","ts",""]],rel:["fulfillment_order_line"]},
 {id:"wc_sync_outbox",g:"F",revive:"리뷰 픽스",why:"WC 동기화 아웃박스 재분리 (두 리뷰어 공통 — must-not-lose 큐를 prunable 로그와 동거 금지). 상태 변경과 같은 트랜잭션에서 enqueue(exactly-once), 워커 폴링용 hot partial index, terminal 상태 다운그레이드 가드의 집행점.",f:[["aggregate_type / aggregate_id","...",""],["event_type + payload","text, jsonb {}",""],["status / attempts / next_retry_at","...","PENDING/SENT/FAILED"]],rel:["fulfillment_order"]}
 ];
+const EX = {
+product_ref:["실사 중 제품 바코드 8809·····72 스캔(주문 컨텍스트 없음) → barcode_coupang 인덱스 히트 → <b>sku 100044372</b> 즉시 해석 — 카탈로그 원격 호출 0회, 카탈로그 장애여도 창고 계속 돌아감","<b>SSD-2780 실사례</b>: Variation SKU 입고 시도 → parent_sku(Variable)로 강제 매핑돼 부모 재고로 집계 — V1에선 이게 안 돼 유령 품절→중복 구매 발생","1+1 제품(pack_size 2) 1개 주문 → 재고 차감 2로 환산 (V1 ProductQuantityCalculator 로직 계승)"],
+fulfillment_order:["WC 주문 #407847(미국) 유입 → 독립 발번 FO-2607-001234 — 나중에 같은 고객 주문 2건과 <b>머지</b>돼도 WC 번호 충돌 없음(M:N)","CS가 고객 배송지 변경 요청 수신 → hold_reason ADDRESS_CHANGE → 스캔 스테이션 Outbound 버튼 즉시 비활성 — V1은 야간에 슬랙 수동 호출 의존(FR-F.5)","마케팅 오더 CSV 30건 import → channel MARKETING_CSV → RTO에서 색 구분 행(FR-D.4)"],
+fulfillment_order_line:["<b>7/6 딥세션 실측 케이스</b>: #407847 라인 3개 중 JIT 2개는 AWAITING_INBOUND, 창고 재고 1개는 RESERVED — 라인마다 상태가 달라서 오더 단위 상태로는 표현 자체가 불가","쿠팡 발주 2개 중 1개만 도착 → 그 라인만 INBOUNDED (부분 입고 추적)","긱워커 쿠팡 결제 ₩12,900 → jit_sourcing_cost 기록(7/14 미팅 요구) → 월말 COGS 집계"],
+mention:["딘이 오더 코멘트에 @빅토리아 태그 → mention 행 + 슬랙 발송 → 빅토리아 화면 우상단 배지 1 — 쿼리는 read_at IS NULL 인덱스 한 번 (V1: 슬랙 스레드에 흩어져 추적 불가)"],
+stock_movement:["입고 스캔: sku 100044372 · WH#01 · delta +2 · actor 오퍼레이터A · 2번 스테이션 · occurred_at 14:02 — stock_balance +2와 같은 트랜잭션","<b>이중 스캔 실측 시나리오(EC-1)</b>: 3번 스테이션이 같은 박스를 2초 뒤 재스캔 → 같은 멱등키 → UNIQUE 위반 → 「오퍼레이터A가 14:02에 이미 입고」로 거부","실사 확정: 시스템 5 vs 실물 4 → AUDIT_ADJUST delta −1, unit_cost ₩8,500 → 그 달 손실 KPI에 ₩8,500 집계 (딘 KPI 목표 0)"],
+stock_balance:["Current Stocks 페이지 = 이 테이블 SELECT 한 번 — <b>V1 실측 ~50초(RTO 화면) → 목표 P95 1.5초</b>","입고 스캔 직후 같은 스테이션이 재고 재조회 → 즉시 +반영 — matview였다면 refresh 전까지 옛 숫자(리뷰 C2가 잡은 지점)"],
+reservation:["Existing Inventory 주문 → ACTIVE/ON_HAND + 로케이션 A1-1-1 핀 → 피킹 리스트가 로케이션순 정렬로 출력","<b>SSD-4448 실사례</b>: 3개 중 1개 부분 환불 → 그 라인 예약만 RELEASED(REFUNDED), 2개는 유지 — V1은 PENDING 무브먼트 역추적 실패로 reserved가 영구히 안 풀렸음","같은 SKU가 US랙·EU랙에 나뉘어 있고 한 라인 10개를 6+4로 분할 예약 → 행 2개 (v5 라인 컬럼으로는 불가능했던 케이스)"],
+tracking_number:["쿠팡 소싱 트래킹 5880·····78을 View Orders에서 스캔 → kind SOURCING_INBOUND 히트 → 해당 주문·라인 즉시 표시 — V1은 월별 GSI를 훑어 수 초","YUN 웨이빌 YT26····01, 박스 2개 → box_seq 1·2 행 — 멀티박스 마감 스캔의 단위","7/21부터 FedEx 도입 진행 → carrier FEDEX 행 (7/24 Yusung 싱크에서 쉬핑 코드 이슈 이미 발생)"],
+tracking_event:["YUN 웹훅: PICKED_UP 7/20 → IN_TRANSIT → DELIVERED 7/24 → 구간별 소요 계산 — <b>Dynamic SLA P70/P90(배송 예상일)의 원천 데이터</b>","라벨 재출력(프린터 걸림) → LABEL_PRINT 이벤트 + actor — 중복 라벨 = 중복 발송 리스크라 감사 필수"],
+ops_session:["스마트바이 재고 보충 20 SKU → INBOUND_REQUEST, inbound_no 202607260001 자동 발번, 소싱루트 배지의 출처","저녁 마감: 박스 47개 스캔 + 수동 카운트 47 일치 + 경고 0 → 확정 — V1의 구글시트+Apps Script 마감 대체(FR-F.4)","월 실사: 로케이션순 워크스루 → total_loss ₩127,000 → 딘 sign-off (손실 KPI, FR-E.3a)"],
+ops_session_line:["<b>홀세일 500박스를 스캐너 3대가 동시 수령</b> → 라인별 row 원자 증분 — v5 jsonb였다면 last-writer-wins로 수령량 조용히 유실(리뷰 C4)","마감 중 같은 박스 재스캔 → UNIQUE(session, box_seq) 위반 → 화면 경고 + 음성 「확인 필요」(FR-F.4)"],
+order_audit:["「이 주문 누가 취소했어?」 → operation CANCEL_ORDER + source가 WOOCOMMERCE(고객 셀프)인지 OPERATOR(운영자)인지 구분 — V1 21종 오퍼레이션 계승","같은 고객 주문 2건 묶음 출고 → MERGE_ORDER 기록 — 몇 달 뒤 CS 문의에도 추적 가능"],
+event_log:["바코드 인식 실패 → UNRECOGNIZED + 제품 추정(브랜드·사이즈)+사진 → PIC 배정 → <b>6시간 미해결 시 단톡방 AI 알림(7/17 미팅 확정 운영)</b> → 트래킹 입력으로 RESOLVED","좌하단 플로팅 패널 「방금 누가 뭘 찍었나」 = 이 테이블 최근 20행 (FR-C.14)"],
+wc_sync_outbox:["출고 확정 트랜잭션에 enqueue → 워커가 WC를 prepare-shipment로 전환 — WC 응답이 5초 걸려도 스캔 스테이션 무영향 (<b>V1 「저장 누르면 한참 로딩」(SSD-4269)의 원인 제거</b>)","WC가 이미 completed(터미널)인데 웹훅이 늦게 도착 → 다운그레이드 가드가 여기서 차단(V1 UnifiedToWcStatusDecider 계승)"]
+};
 const groupsEl=document.getElementById('groups');
 const byG={};T.forEach(t=>{(byG[t.g]=byG[t.g]||[]).push(t)});
 Object.keys(G).forEach(g=>{
@@ -131,7 +170,7 @@ Object.keys(G).forEach(g=>{
     const c=document.createElement('div');c.className='card';c.id='tbl-'+t.id;c.style.setProperty('--gc',G[g].color);
     let badges=(t.absorb||[]).map(x=>`<span class="absorb">⊕ ${x}</span>`).join('')+(t.fixes||[]).map(x=>`<span class="fixes">🩹 ${x}</span>`).join('')+(t.fr||[]).map(x=>`<span class="fr">${x}</span>`).join('');
     let rows=t.f.map(f=>`<tr><td class="k">${f[0].replace('◆','<span class=pk>◆</span>').replace(/→/g,'<span class=fk>→</span>')}</td><td class="t">${f[1].replace('◆','<span class=pk>◆</span>').replace(/→/g,'<span class=fk>→</span>').replace('{}','<span class=jb>{}</span>')}</td><td class="w">${f[2]}</td></tr>`).join('');
-    c.innerHTML=`<h3>${t.id}${t.keep?'<span class="keep">사수</span>':''}${t.revive?'<span class="revive">'+t.revive+'</span>':''}</h3><div class="why">${t.why}</div><div>${badges}</div><table>${rows}</table>`;
+    let exb=(EX[t.id]||[]).map(x=>`<div>${x}</div>`).join('');c.innerHTML=`<h3>${t.id}${t.keep?'<span class="keep">사수</span>':''}${t.revive?'<span class="revive">'+t.revive+'</span>':''}</h3><div class="why">${t.why}</div><div>${badges}</div><table>${rows}</table>${exb?'<div class="ex">'+exb+'</div>':''}`;
     c.onclick=(e)=>{e.stopPropagation();select(t)};
     grid.appendChild(c);
   });
@@ -150,6 +189,8 @@ function select(t){
 function clearSel(){document.querySelectorAll('.card').forEach(c=>c.classList.remove('dim','sel','rel'));relbox.style.display='none';}
 document.getElementById('clearBtn').onclick=clearSel;
 document.body.addEventListener('click',clearSel);
+document.getElementById('exBtn').onclick=(e)=>{e.stopPropagation();document.body.classList.toggle('showex');e.target.classList.toggle('active')};
+document.getElementById('flowBtn').onclick=(e)=>{e.stopPropagation();document.body.classList.toggle('showflow');e.target.classList.toggle('active')};
 document.getElementById('whyBtn').onclick=(e)=>{e.stopPropagation();document.body.classList.toggle('showwhy');e.target.classList.toggle('active')};
 document.getElementById('mapBtn').onclick=(e)=>{e.stopPropagation();document.body.classList.toggle('showmap');e.target.classList.toggle('active')};
 </script>
