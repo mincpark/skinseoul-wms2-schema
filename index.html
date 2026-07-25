@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OMS/WMS 2.0 스키마 (v8 — 10 테이블, 민철 확정)</title>
+<title>OMS/WMS 2.0 스키마 (v9 — 9 테이블, 민철 확정)</title>
 <style>
   :root{
     --bg:#0f1117; --panel:#171a23; --card:#1c2030; --border:#2a3045; --text:#e6e9f2; --muted:#8b93a7;
@@ -63,10 +63,10 @@
 </style>
 </head>
 <body>
-<h1>OMS/WMS 2.0 — 데이터 스키마 <span style="font-size:12px;color:var(--muted);font-weight:400">(v8 · 민철 확정 · SSD-5345)</span></h1>
+<h1>OMS/WMS 2.0 — 데이터 스키마 <span style="font-size:12px;color:var(--muted);font-weight:400">(v9 · 민철 확정 · SSD-5345)</span></h1>
 <div class="sub">테이블 카드 클릭 = 관계 하이라이트 · <span style="color:var(--b)">◆</span>=PK · <span style="color:var(--d)">→</span>=FK · <span style="color:var(--f)">{}</span>=jsonb · PostgreSQL(Cloud SQL) 가정 · 전 테이블 공통 created_at/occurred_at</div>
 <div class="stats">
-  <div class="stat">테이블 <b>10</b> <span style="color:var(--muted)">(v1 26 → v2 16 → v5 6 → 리뷰 v6 14 → 민철 챌린지 v8 10)</span></div>
+  <div class="stat">테이블 <b>9</b> <span style="color:var(--muted)">(v1 26 → v2 16 → v5 6 → 리뷰 v6 14 → 민철 챌린지 v9 9)</span></div>
   <div class="stat"><span class="keep">사수</span> <b>3</b> — order_line · stock_movement · tracking_number</div>
   <div class="stat"><span style="color:var(--muted)">더블체크(Claude×Codex) + 민철 챌린지 5라운드 반영</span></div>
 </div>
@@ -77,9 +77,9 @@
   <button id="mapBtn">결정 히스토리</button>
   <button id="clearBtn">선택 해제</button>
 </div>
-<div class="notable"><b>테이블 없이 해결하는 것들 (v8 확정)</b> — <b>WC 동기화</b>: 그때그때 건별 비동기 호출(동시성 캡 5~10, 일괄은 WC batch API 100건/요청) + 시간당 스위퍼가 WMS≠WC 차이 재푸시(유실 자가 치유, 터미널 다운그레이드 가드는 코드 한 줄) · <b>멘션</b>: 슬랙 알림만(인앱 배지 없음) · <b>로케이션</b>: 코드 문자열 · <b>유저</b>: 기존 어드민 계정 텍스트 · <b>공급사/PO</b>: 텍스트(phase-2 승격)</div>
+<div class="notable"><b>테이블 없이 해결하는 것들 (v9 확정)</b> — <b>카탈로그(바코드·parent_sku·pack_size)</b>: 미러 없음 — 기존 카탈로그를 그때그때 직접 조회(V1도 이미 스캔마다 WP 조회, 단건 lookup 수 ms. 핫 SKU는 앱 메모리 캐시 TTL 몇 분) · <b>WC 동기화</b>: 그때그때 건별 비동기 호출(동시성 캡 5~10, 일괄은 WC batch API 100건/요청) + 시간당 스위퍼가 WMS≠WC 차이 재푸시(유실 자가 치유, 터미널 다운그레이드 가드는 코드 한 줄) · <b>멘션</b>: 슬랙 알림만(인앱 배지 없음) · <b>로케이션</b>: 코드 문자열 · <b>유저</b>: 기존 어드민 계정 텍스트 · <b>공급사/PO</b>: 텍스트(phase-2 승격)</div>
 <div class="flowbox">
-  <b>주문 #407847의 일생 — 한 건이 10개 테이블을 지나가는 실측 워크스루</b> <span style="color:var(--muted)">(와이어프레임 실제 예시 주문 · 라인 3개: JIT 2 + 창고 재고 1 · YUN 출고)</span>
+  <b>주문 #407847의 일생 — 한 건이 9개 테이블을 지나가는 실측 워크스루</b> <span style="color:var(--muted)">(와이어프레임 실제 예시 주문 · 라인 3개: JIT 2 + 창고 재고 1 · YUN 출고)</span>
   <table>
     <tr><td class="s">1. 주문 유입</td><td>WC 웹훅 → <b>fulfillment_order</b> FO-발번 1행(channel WC, country US) + <b>fulfillment_order_line</b> 3행(카탈로그 조회로 부모 SKU·pack 해석 후 스냅샷) + 재고 있는 1라인은 <b>reservation</b> ACTIVE/ON_HAND(A1-1-1 핀) + <b>event</b>(ORDER_OP: ORDER_RECEIVED, source WOOCOMMERCE)</td></tr>
     <tr><td class="s">2. JIT 발주</td><td>긱워커가 쿠팡 결제 → line.jit_sourcing_cost ₩12,900 기록(7/14 미팅 요구) + <b>reservation</b> JIT_COMMITTED 2행 + 수 시간 뒤 트래킹 발급 → <b>tracking_number</b> kind SOURCING_INBOUND 2행. 6시간 미입력이면 <b>event</b>(SCAN) 기반 AI 알림(7/17 미팅)</td></tr>
@@ -93,8 +93,9 @@
 </div>
 <div class="mapbox">
   <b>결정 히스토리 — 26개에서 10개까지</b>
-  <h4>🔵 v8 민철 확정 (2026-07-26 논의)</h4>
+  <h4>🔵 v8→v9 민철 확정 (2026-07-26 논의)</h4>
   <table>
+    <tr><td class="k">product_ref</td><td>❌ 완전 삭제 (v9) — 「있는 걸 굳이 넣지 마라, 미러 하지 마라」. 바코드·parent·pack은 기존 카탈로그 직접 조회(단건 lookup 수 ms — V1의 50초는 카탈로그가 아니라 DDB/BQ 문제였음). 핫 SKU는 앱 메모리 캐시(테이블 아님). SSD-2780 픽스는 서비스 로직이라 그대로 유지</td></tr>
     <tr><td class="k">mention</td><td>❌ 제거 — 태그 알림은 슬랙으로 충분, 인앱 안읽음 배지 요구 자체를 드랍</td></tr>
     <tr><td class="k">tracking_event</td><td>→ tracking_number.<b>events jsonb</b> 내장 — 트래킹당 이벤트 10~20개라 행 분리 불필요. BI 집계는 월 배치라 jsonb 전개 수용</td></tr>
     <tr><td class="k">wc_sync_outbox</td><td>❌ 제거 — 건별 비동기 호출(동시성 캡/batch API) + <b>시간당 스위퍼</b>(WMS≠WC 비교 재푸시). 유실 시 최대 1시간 stale 수용</td></tr>
@@ -106,7 +107,7 @@
     <tr><td class="k">reservation</td><td>라인 컬럼 예약은 복수 로케이션 분할 불가 + SoT 모순(원장이 진실인데 reserved는 라인) — 원장은 물리 이동만, 예약은 이 테이블</td></tr>
     <tr><td class="k">stock_balance</td><td>matview는 refresh 전 스캔분 안 보임(read-your-writes 붕괴) — 원장과 같은 트랜잭션 upsert 프로젝션</td></tr>
     <tr><td class="k">ops_doc_line</td><td>입고 수령 jsonb 증분 = 동시 스캐너 silent lost-update — row 단위 원자 증분</td></tr>
-    <tr><td class="k">product_ref</td><td>주문 없는 재고 스캔의 로컬 바코드 인덱스 + Variant 부모 강제(SSD-2780). 바코드 정책: EAN=불변 정체성(GS1 — 상품 변경=새 GTIN=새 SKU, 재사용 금지), 쿠팡 코드=가변 별칭</td></tr>
+    <tr><td class="k">바코드 정책 (테이블 무관, 유지)</td><td>EAN=불변 정체성(GS1 — 상품 변경=새 GTIN=새 SKU, 재사용 금지), 쿠팡 코드=가변 별칭 — 카탈로그 조회·라인 스냅샷에 동일 적용. Variant 부모 강제(SSD-2780)는 입고/유입 서비스 로직</td></tr>
     <tr><td class="k">event의 ORDER_OP</td><td>V1 실존 감사 기능(21 오퍼레이션×10 소스) 회귀 방지</td></tr>
     <tr><td class="k">원장 보강</td><td>occurred_at 전 테이블 · INBOUND 행 unit_cost(FIFO 대비) · lot/expiry nullable 자리 · 멱등키 generation 규칙 · JIT→ON_HAND 전환 same-txn</td></tr>
   </table>
@@ -116,7 +117,6 @@
   </table>
 </div>
 <div class="legend">
-  <span><i class="dot" style="background:var(--a)"></i>카탈로그 (1·미러)</span>
   <span><i class="dot" style="background:var(--e)"></i>주문 (2)</span>
   <span><i class="dot" style="background:var(--b)"></i>재고 (3)</span>
   <span><i class="dot" style="background:var(--d)"></i>배송·작업문서 (3)</span>
@@ -125,21 +125,19 @@
 <div class="groups" id="groups"></div>
 <div id="relbox"></div>
 <script>
-const G = {A:{name:"A. 카탈로그 (기존 재사용 — 얇은 읽기 전용 미러)",color:"var(--a)"},B:{name:"B. 주문",color:"var(--e)"},C:{name:"C. 재고 — 원장(진실) + 예약 + 밸런스(캐시)",color:"var(--b)"},D:{name:"D. 배송 · 작업 문서",color:"var(--d)"},F:{name:"F. 이벤트 (스캔 로그 + 주문 감사)",color:"var(--c)"}};
+const G = {B:{name:"B. 주문",color:"var(--e)"},C:{name:"C. 재고 — 원장(진실) + 예약 + 밸런스(캐시)",color:"var(--b)"},D:{name:"D. 배송 · 작업 문서",color:"var(--d)"},F:{name:"F. 이벤트 (스캔 로그 + 주문 감사)",color:"var(--c)"}};
 const T = [
-{id:"product_ref",g:"A",absorb:["product_barcode"],why:"얇은 읽기 전용 카탈로그 미러. 바코드 정책(민철 확정 + GS1): EAN = 불변 정체성 — 모델·용량 변경 = 새 GTIN = 새 SKU 새 행(GS1 재사용 금지로 매핑 영구 유효). barcodes 배열은 변경 이력이 아니라 동시 이종 코드용(불변 EAN 1 + 가변 쿠팡 코드 N). 스캔 miss → 카탈로그 라이브 조회 → self-heal upsert. SoT는 기존 카탈로그, 사람이 안 만짐.",fixes:["SSD-2780 유령품절"],f:[["sku","text ◆","FK 타깃 — 오타 유령 재고 방지"],["parent_sku / product_type / pack_size","...","Variant·팩 해석을 재고 경계에서도"],["barcodes","jsonb GIN IDX","[{code, type:EAN|COUPANG}] — EAN 불변(1), 쿠팡 가변 별칭(N)"],["name_snapshot / brand","text?","라벨·화면 표시"],["synced_at","ts","miss 시 read-through 셀프힐"]],rel:["fulfillment_order_line","stock_movement","stock_balance","ops_doc_line"]},
 {id:"fulfillment_order",g:"B",absorb:["order_hold","order_comment"],why:"주문 헤더 — 독립 발번, 커머스 링크는 라인 레벨 M:N(주문 2층+실행 1층 모델). hold는 컬럼(이력은 event ORDER_OP), comments는 jsonb 타임라인(태그 시 슬랙 알림만 — 인앱 배지 없음, 민철 확정). WC 상태 동기화는 테이블 없이 건별 비동기 호출+스위퍼.",fixes:["SSD-4269 거대문서 쓰기"],f:[["id","text ◆","독립 발번 — WC 번호 빌려쓰기 금지 (split/merge M:N)"],["channel","enum","WC/MARKETING_CSV/CREATORHUB"],["country_code","text","국가랙·EU 샘플 제외"],["rollup_status","enum","라인 파생 — DB 트리거 유지"],["is_marketing / is_mystery_box","bool","RTO 색/탭 + 샘플 룰"],["hold_reason / held_by / held_at","...","활성 hold — Outbound 차단"],["comments","jsonb {}","[{author, body, type USER/SYSTEM, ts}] — 태그는 슬랙 발송"],["pic_user","text","기존 어드민 계정 텍스트"],["version","int","낙관락 (코멘트 append는 제외)"]],rel:["fulfillment_order_line","tracking_number","event"]},
-{id:"fulfillment_order_line",g:"B",keep:true,why:"상태머신의 척추 [사수]. 커머스 주문은 이미 재사용(복사 안 함, id 링크만) — 라인은 창고 작업물이라 WC 행이 될 수 없음(상태·split/merge·예약). 부분 매칭이면 라인을 쪼갠다.",fixes:["SSD-4448","V1 라인상태 부재"],f:[["order_id","→fulfillment_order",""],["line_status","enum","ORDERED→RESERVED→AWAITING_INBOUND→INBOUNDED→READY→OUTBOUNDED→CLOSED (+CANCELLED/RETURNED)"],["sku","→product_ref","부모 해석 후 + 카탈로그 스냅샷(이름·브랜드·pack)"],["original_sku","text","고객이 산 Variation SKU"],["qty_ordered/inbounded/outbounded","int","부분 입출고 불변식"],["sourcing_route","enum","JIT/EXISTING_INVENTORY/WHOLESALE/BRAND_PARTNERSHIP"],["is_sample","bool","슬립 샘플 행·EU 제외 판정"],["wc_order_id + wc_item_id","text?","커머스 라인 링크"],["jit_sourcing_cost","numeric?","JIT 라인 원가(7/14 미팅) → COGS"],["return_info","jsonb? {}","반품 메타(메모·grading·재입고 로케이션)"],["version","int","스테이션 간 이중 스캔 거부"]],rel:["fulfillment_order","product_ref","reservation","tracking_number","event"]},
-{id:"stock_movement",g:"C",keep:true,why:"append-only 원장 = 유일한 진실 [사수]. 수정·삭제 금지, 취소도 새 행. 원장은 물리 이동만 — 예약은 reservation이 진실(SoT 모순 해소). 로케이션은 코드 문자열(location 테이블 없음).",fixes:["SSD-4448 근본","pending짝 붕괴"],f:[["id","bigserial ◆","순서 보장"],["sku","→product_ref",""],["location_code","text","A1-1-1 + 논리 로케이션(3PL#/EXT#)"],["delta","int ±","합산 = 그 시점 on_hand"],["movement_type","enum","INBOUND/OUTBOUND/±CANCEL/AUDIT_ADJUST/RETURN_RESTOCK/TRANSFER"],["unit_cost","numeric?","INBOUND·RETURN_RESTOCK에 기록 — phase-2 FIFO 원천"],["lot_id / expiry","?","nullable 자리 (V1 WMS가 이미 lotCd/expDate 제공)"],["ref_type + ref_id","poly","출처 역추적"],["actor + station_id","text","행위자"],["occurred_at","ts",""],["idempotency_key","text UQ","스캔+generation 파생 — 취소 후 정당 재실행은 새 generation"]],rel:["product_ref","stock_balance","ops_doc"]},
-{id:"stock_balance",g:"C",why:"현재고 프로젝션 (matview 아님 — 리뷰: refresh 전 스캔분 안 보임). 원장과 같은 트랜잭션에서 upsert → 스캔 직후 즉시 반영. 검증용 원장 합산 뷰는 BI/대사용 별도.",f:[["sku + location_code","UQ","(lot 자리 예약)"],["on_hand","int","원장과 same-txn upsert"],["version","int","낙관락"]],rel:["stock_movement","reservation","product_ref"]},
+{id:"fulfillment_order_line",g:"B",keep:true,why:"상태머신의 척추 [사수]. 커머스 주문은 이미 재사용(복사 안 함, id 링크만) — 라인은 창고 작업물이라 WC 행이 될 수 없음(상태·split/merge·예약). 부분 매칭이면 라인을 쪼갠다.",fixes:["SSD-4448","V1 라인상태 부재"],f:[["order_id","→fulfillment_order",""],["line_status","enum","ORDERED→RESERVED→AWAITING_INBOUND→INBOUNDED→READY→OUTBOUNDED→CLOSED (+CANCELLED/RETURNED)"],["sku","text","기존 카탈로그로 부모 해석 후 스냅샷(이름·브랜드·pack·바코드) — 미러 테이블 없음"],["original_sku","text","고객이 산 Variation SKU"],["qty_ordered/inbounded/outbounded","int","부분 입출고 불변식"],["sourcing_route","enum","JIT/EXISTING_INVENTORY/WHOLESALE/BRAND_PARTNERSHIP"],["is_sample","bool","슬립 샘플 행·EU 제외 판정"],["wc_order_id + wc_item_id","text?","커머스 라인 링크"],["jit_sourcing_cost","numeric?","JIT 라인 원가(7/14 미팅) → COGS"],["return_info","jsonb? {}","반품 메타(메모·grading·재입고 로케이션)"],["version","int","스테이션 간 이중 스캔 거부"]],rel:["fulfillment_order","reservation","tracking_number","event"]},
+{id:"stock_movement",g:"C",keep:true,why:"append-only 원장 = 유일한 진실 [사수]. 수정·삭제 금지, 취소도 새 행. 원장은 물리 이동만 — 예약은 reservation이 진실(SoT 모순 해소). 로케이션은 코드 문자열(location 테이블 없음).",fixes:["SSD-4448 근본","pending짝 붕괴"],f:[["id","bigserial ◆","순서 보장"],["sku","text","부모 SKU 문자열 — 카탈로그는 기존 시스템 직접 조회"],["location_code","text","A1-1-1 + 논리 로케이션(3PL#/EXT#)"],["delta","int ±","합산 = 그 시점 on_hand"],["movement_type","enum","INBOUND/OUTBOUND/±CANCEL/AUDIT_ADJUST/RETURN_RESTOCK/TRANSFER"],["unit_cost","numeric?","INBOUND·RETURN_RESTOCK에 기록 — phase-2 FIFO 원천"],["lot_id / expiry","?","nullable 자리 (V1 WMS가 이미 lotCd/expDate 제공)"],["ref_type + ref_id","poly","출처 역추적"],["actor + station_id","text","행위자"],["occurred_at","ts",""],["idempotency_key","text UQ","스캔+generation 파생 — 취소 후 정당 재실행은 새 generation"]],rel:["stock_balance","ops_doc"]},
+{id:"stock_balance",g:"C",why:"현재고 프로젝션 (matview 아님 — 리뷰: refresh 전 스캔분 안 보임). 원장과 같은 트랜잭션에서 upsert → 스캔 직후 즉시 반영. 검증용 원장 합산 뷰는 BI/대사용 별도.",f:[["sku + location_code","UQ","(lot 자리 예약)"],["on_hand","int","원장과 same-txn upsert"],["version","int","낙관락"]],rel:["stock_movement","reservation"]},
 {id:"reservation",g:"C",why:"예약 일급 엔티티 (리뷰 CRITICAL — 라인 컬럼으로는 복수 로케이션 분할·ON_HAND/JIT 혼합 표현 불가 + SoT 모순). available = on_hand − Σ ACTIVE ON_HAND 예약. JIT 입고 시 kind 전환은 INBOUND 원장 행과 같은 트랜잭션(순간 oversell 차단). 취소/환불(부분 포함)은 라인 조인 한 번으로 RELEASE.",fixes:["SSD-4448 해결"],f:[["order_line_id","→fulfillment_order_line","무엇을 위한 예약"],["sku + location_code?","...","로케이션 핀(피킹 시 확정 가능), 복수 행 = 분할 예약"],["qty","int",""],["kind","enum","ON_HAND / JIT_COMMITTED"],["state","enum","ACTIVE/RELEASED/CONSUMED"],["released_reason","enum?","SHIPPED/CANCELLED/REFUNDED/MANUAL"]],rel:["fulfillment_order_line","stock_balance"]},
 {id:"tracking_number",g:"D",keep:true,absorb:["shipment","shipment_box","tracking_event"],why:"만능 스캔 인덱스 [사수] + 배송 실행 전체. 현재 상태는 컬럼, 시간축 이력은 events jsonb 내장(민철 확정 — 트래킹당 이벤트 10~20개라 행 분리 불필요). 캐리어의 주문은 그들 레코드, 여기는 사상(carrier_order_id)만.",fixes:["V1 트래킹 5곳 분산"],f:[["number","text IDX","스캔 한 번 = 조회 한 번 (P95 200ms 핵심)"],["carrier","enum","YUN/DELEO/PARXL/FEDEX/COUPANG/OTHER"],["kind","enum","OUTBOUND/SOURCING_INBOUND/RETURN/LAST_MILE"],["ref_type + ref_id","poly","ORDER/ORDER_LINE/OPS_DOC_LINE"],["box_seq","int?","멀티박스"],["carrier_order_id","text?","캐리어측 참조 — 변이 안 함"],["label_url + print_idempotency_key","text?","라벨·자동출력 이중 방지"],["unified_status","enum?","현재값 미러 — 내부 상태머신과 격리"],["events","jsonb {}","[{event, provider_code, ts}] 웹훅 이력 + LABEL_PRINT — 구간 소요 = Dynamic SLA 원천"],["close_doc_id","→ops_doc?","마감 포함"]],rel:["fulfillment_order","fulfillment_order_line","ops_doc","ops_doc_line"]},
 {id:"ops_doc",g:"D",absorb:["close_batch","audit_session","inbound_request"],why:"「작업 문서」 헤더 (구 ops_session — 민철 지적으로 개명). 종이/시트로 하던 세 문서의 디지털화: 입고 요청서(INBOUND_REQUEST)·저녁 마감 시트(CLOSING)·월 실사 시트(STOCK_AUDIT). OPEN→라인 작성→CONFIRM 수명주기 + 확정 전 수정이 있어 이벤트로 표현 불가. 셋 다 같은 구조라 type 하나로.",f:[["type","enum ◆","INBOUND_REQUEST / CLOSING / STOCK_AUDIT"],["operator / signed_off_by","text","담당 + 승인"],["status / confirmed_at","...","타입별 확정 규칙 (마감: 정확 일치+경고 0)"],["version","int","문서 낙관락"],["meta","jsonb {}","입고: inbound_no(UQ)·루트·supplier·po_ref / 마감: manual_count / 실사: total_loss"]],rel:["ops_doc_line","stock_movement","tracking_number"]},
-{id:"ops_doc_line",g:"D",why:"작업 문서의 줄들 — 입고 요청서의 SKU 20줄, 마감의 박스 47줄, 실사의 로케이션 300줄. 별도 테이블인 이유: 스캐너 3대가 같은 요청서에 동시 수령 찍을 때 줄 단위 원자 +1 (jsonb면 서로 덮어써서 수령량 증발 — 리뷰 CRITICAL). UNIQUE(doc, box_seq)로 마감 중복 DB 차단.",fixes:["동시 수령 lost-update"],f:[["doc_id","→ops_doc",""],["line_no","int","안정적 참조 id"],["sku","→product_ref?","입고/실사"],["qty_expected / qty_received","int?","입고 — 부분 수령 15/20 추적"],["unit_cost / is_foc / jit_price","...","COGS 원천 (원장에도 미러)"],["system_qty / counted_qty / cost_snapshot","...","실사 — 세션 시작 스냅샷"],["box_seq / tracking / warning","...","마감 — UNIQUE(doc, box_seq)"]],rel:["ops_doc","product_ref","tracking_number"]},
+{id:"ops_doc_line",g:"D",why:"작업 문서의 줄들 — 입고 요청서의 SKU 20줄, 마감의 박스 47줄, 실사의 로케이션 300줄. 별도 테이블인 이유: 스캐너 3대가 같은 요청서에 동시 수령 찍을 때 줄 단위 원자 +1 (jsonb면 서로 덮어써서 수령량 증발 — 리뷰 CRITICAL). UNIQUE(doc, box_seq)로 마감 중복 DB 차단.",fixes:["동시 수령 lost-update"],f:[["doc_id","→ops_doc",""],["line_no","int","안정적 참조 id"],["sku","text?","입고/실사 — 카탈로그 검증은 서비스 레이어"],["qty_expected / qty_received","int?","입고 — 부분 수령 15/20 추적"],["unit_cost / is_foc / jit_price","...","COGS 원천 (원장에도 미러)"],["system_qty / counted_qty / cost_snapshot","...","실사 — 세션 시작 스냅샷"],["box_seq / tracking / warning","...","마감 — UNIQUE(doc, box_seq)"]],rel:["ops_doc","tracking_number"]},
 {id:"event",g:"F",absorb:["scan_event","missing_tracking_item","order_audit"],why:"이벤트 2종의 단일 append 테이블. SCAN = 스캔 텔레메트리(성공·실패·중복·경고, 플로팅 패널·일별 export) + 미인식 스캔의 미입력 워크리스트(PIC 배정→해결). ORDER_OP = 주문 감사(V1 21 오퍼레이션×10 소스 계승 — 「누가 취소했어?」). kind별 partial index + 월 파티션 + kind별 보존정책(스캔 prune 가능, 감사 영구).",fixes:["U24 감사 계승"],f:[["kind","enum ◆","SCAN / ORDER_OP"],["ref_type + ref_id","poly","주문/라인/트래킹/문서"],["operation / source","enum?","ORDER_OP — CREATE/MERGE/CANCEL/HOLD… × OMS/OPERATOR/WOOCOMMERCE/WEBHOOK/HUB…"],["outcome / status / pic_user / guessed_product","...","SCAN — MATCHED/UNRECOGNIZED + 워크리스트(OPEN/RESOLVED)+사진"],["actor + station_id","text",""],["payload","jsonb {}","kind별 상세"],["occurred_at","ts","공통 시간축"]],rel:["fulfillment_order","fulfillment_order_line"]}
 ];
 const EX = {
-product_ref:["실사 중 제품 바코드 8809·····72 스캔(주문 컨텍스트 없음) → barcodes 배열 GIN 히트 → <b>sku 100044372</b> 즉시 해석 — 카탈로그 원격 호출 0회","<b>바코드 정체성 정책(민철 확정, GS1 부합)</b>: 브랜드가 용량 변경 리뉴얼 → 새 GTIN = 카탈로그에 새 SKU 발급 → product_ref 새 행, 옛 재고는 옛 SKU로 소진 — 같은 SKU의 바코드를 갈아끼우는 일은 없음","쿠팡이 리스팅 개편으로 로켓 바코드 재발급 → 같은 SKU의 barcodes 배열에 COUPANG 타입 코드 추가(EAN은 그대로) — 배열이 존재하는 진짜 이유","<b>SSD-2780 실사례</b>: Variation SKU 입고 시도 → parent_sku(Variable)로 강제 매핑돼 부모 재고로 집계 — V1에선 이게 안 돼 유령 품절→중복 구매"],
 fulfillment_order:["WC 주문 #407847(미국) 유입 → 독립 발번 FO-2607-001234 — 나중에 같은 고객 주문 2건과 <b>머지</b>돼도 WC 번호 충돌 없음(M:N)","CS가 배송지 변경 요청 수신 → hold_reason ADDRESS_CHANGE → 스캔 스테이션 Outbound 버튼 즉시 비활성 — V1은 야간 슬랙 수동 의존","출고 확정 → 그 건 하나 WC 비동기 호출(일괄이면 batch API) → 실패해도 시간당 스위퍼가 재푸시 — <b>V1 「저장 누르면 한참 로딩」(SSD-4269) 원인 제거, 테이블 없이</b>"],
 fulfillment_order_line:["<b>7/6 딥세션 실측</b>: #407847 라인 3개 중 JIT 2개는 AWAITING_INBOUND, 창고 재고 1개는 RESERVED — 라인마다 상태가 달라 오더 단위로는 표현 불가","쿠팡 발주 2개 중 1개만 도착 → 그 라인만 INBOUNDED (부분 입고)","긱워커 쿠팡 결제 ₩12,900 → jit_sourcing_cost 기록(7/14 미팅) → 월말 COGS"],
 stock_movement:["입고 스캔: sku 100044372 · WH#01 · delta +2 · 오퍼레이터A · 2번 스테이션 · 14:02 — stock_balance +2와 같은 트랜잭션","<b>이중 스캔(EC-1)</b>: 3번 스테이션이 같은 박스 2초 뒤 재스캔 → 같은 멱등키 → UNIQUE 위반 → 「오퍼레이터A가 14:02에 이미 입고」로 거부","실사 확정: 시스템 5 vs 실물 4 → AUDIT_ADJUST delta −1, unit_cost ₩8,500 → 손실 KPI ₩8,500 (딘 목표 0)"],
