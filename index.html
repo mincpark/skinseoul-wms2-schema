@@ -37,12 +37,13 @@
   .card .why{color:var(--muted); font-size:12px; margin-bottom:8px;}
   .absorb{display:inline-block; background:rgba(198,120,221,.15); color:var(--f); font-size:10.5px; border-radius:5px; padding:1px 6px; margin:0 4px 8px 0;}
   .fixes{display:inline-block; background:rgba(224,108,117,.15); color:var(--c); font-size:10.5px; border-radius:5px; padding:1px 6px; margin:0 4px 8px 0;}
-  table{width:100%; border-collapse:collapse; font-size:11.5px;}
-  td{padding:3px 4px; border-top:1px solid var(--border); vertical-align:top;}
-  td.k{font-family:ui-monospace,Menlo,monospace; color:var(--text);}
-  td.t{color:var(--muted); white-space:nowrap; font-size:10.5px;}
+  table{width:100%; border-collapse:collapse; font-size:11.5px; table-layout:fixed;}
+  td{padding:3px 4px; border-top:1px solid var(--border); vertical-align:top; word-break:break-word; overflow-wrap:anywhere;}
+  td.k{font-family:ui-monospace,Menlo,monospace; color:var(--text); width:34%;}
+  td.t{color:var(--muted); white-space:normal; font-size:10.5px;}
   td.w{color:var(--muted); display:none;}
-  body.showwhy td.w{display:table-cell;}
+  body.showwhy td.w{display:table-cell; width:38%;}
+  body.showwhy td.k{width:28%;}
   td .pk{color:var(--b); font-weight:600;} td .fk{color:var(--d);} td .jb{color:var(--f);}
   #relbox{position:sticky; bottom:12px; margin-top:20px; background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px 16px; font-size:13px; display:none;}
   #relbox b{font-family:ui-monospace,Menlo,monospace;}
@@ -53,10 +54,10 @@
   body.showcompat .compatbox{display:block;}
   .contractbox{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:20px; font-size:12.5px; display:none;}
   body.showcontract .contractbox{display:block;}
-  .contractbox table td{font-size:11.5px;}
+  .contractbox table td{font-size:11.5px;} .contractbox td.k{width:22%;}
   .contractbox h4{font-size:12.5px; margin:10px 0 4px;}
-  .compatbox table td{font-size:11.5px;}
-  .mapbox table td{font-size:11.5px;}
+  .compatbox table td{font-size:11.5px;} .compatbox td.k{width:26%;}
+  .mapbox table td{font-size:11.5px;} .mapbox td.k{width:26%;}
   .mapbox h4{font-size:12.5px; margin:10px 0 4px;}
   .ex{display:none; margin-top:8px; border-top:1px dashed var(--border); padding-top:8px;}
   body.showex .ex{display:block;}
