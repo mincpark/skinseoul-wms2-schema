@@ -82,7 +82,7 @@
 </head>
 <body>
 <h1>OMS/WMS 2.0 — 데이터 스키마 <span style="font-size:12px;color:var(--muted);font-weight:400">(🔒 v12 확정 — 민철 컨펌 2026-07-26 · SSD-5345)</span></h1>
-<div class="sub">→ <a href="./architecture.html" style="color:var(--a)"><b>아키텍처 페이지 (이 스키마 기반 시스템 설계)</b></a> · 테이블 카드 클릭 = 관계 하이라이트 · <span style="color:var(--b)">◆</span>=PK · <span style="color:var(--d)">→</span>=FK · <span style="color:var(--f)">{}</span>=jsonb · PostgreSQL(Cloud SQL) 가정 · 전 테이블 공통 created_at/occurred_at</div>
+<div class="sub">→ <a href="./architecture.html" style="color:var(--a)"><b>아키텍처 페이지 (이 스키마 기반 시스템 설계)</b></a> · 테이블 카드 클릭 = 관계 하이라이트 · <span style="color:var(--b)">◆</span>=PK · <span style="color:var(--d)">→</span>=FK · <span style="color:var(--f)">{}</span>=JSON · <b>Cloud Spanner</b>(기존 인스턴스 신규 DB — 민철 확정 2026-07-26) · 전 테이블 공통 created_at/occurred_at</div>
 <div class="stats">
   <div class="stat">테이블 <b>9</b> <span style="color:var(--muted)">(v1 26 → v2 16 → v5 6 → 리뷰 v6 14 → 민철 챌린지 v9 9)</span></div>
   <div class="stat"><span class="keep">사수</span> <b>3</b> — order_line · stock_movement · tracking_number</div>
@@ -102,12 +102,12 @@
 <div class="roadbox">
   <b>시스템 로드맵 — 스키마 밖에서 2.0이 되기 위해 필요한 6기둥</b> <span style="color:var(--muted)">(2026-07-26 민철×Claude 논의)</span>
   <table>
-    <tr><td class="k">1. 아키텍처 골격</td><td>V2 = <b>apps/internal-api 내 신규 도메인 + 신규 Cloud SQL</b>(권장) — 배포/인증/모듈 재사용, V1(DDB)과 같은 프로세스에서 병행 운영 → 컷오버 용이. dev/staging/prod 3환경 프로비저닝(CDK/tofu). <b>민철 결정 대기</b></td></tr>
+    <tr><td class="k">1. 아키텍처 골격</td><td>V2 = <b>apps/internal-api 내 신규 도메인 + 기존 Cloud Spanner 인스턴스에 신규 DB</b> — 배포/인증/모듈 재사용, V1(DDB)과 같은 프로세스에서 병행 운영 → 컷오버 용이. dev/staging/prod 3환경 인스턴스 이미 라이브(신설 인프라 0), DDL SoT는 Facade spanner/migrations 패턴 계승. <b>민철 확정 (2026-07-26)</b>. Spanner 조정 3건: 트리거 없음→OrderRollupService 단일 경로 · partial UNIQUE→generated column+NULL_FILTERED UNIQUE · 순차 발번 핫스팟은 현 볼륨(초당 1건 미만)에서 무시 가능</td></tr>
     <tr><td class="k">2. 선행 설계 문서 2건</td><td>① line_status 상태머신 정본(전이표+가역성 매트릭스+WC 매핑) ② WC↔WMS 동기화 계약(필드별 SoT·충돌 해소 표) — 구현 착수 전 완성</td></tr>
     <tr><td class="k">3. 스테이션 인프라</td><td>사일런트 프린트 에이전트(스테이션 로컬) · YUN 라벨 자체 렌더러(7/6 확정 방향) · 스캔건 입력 파서 · 마감 음성 알림 · 오프라인 큐 정책 — 독립 스프린트 트랙</td></tr>
     <tr><td class="k">4. 마이그레이션 도구</td><td>M1~M6 규칙 구현 변환 스크립트 + 검증 리포트(수량 합계 불변식·짝 안 맞는 pending 목록) + 병행 운영/컷오버 설계 — 창고는 못 멈춤, 사실상 프로젝트의 절반</td></tr>
     <tr><td class="k">5. 관측성 + 테스트 고정</td><td>원장 드리프트 알람 · 스캔 P95 실측 메트릭(재는 장치 없으면 목표 아님) · 스위퍼 실패 알람(Grafana) · <b>엣지 26건+계약 R1~R7을 integ 테스트로 고정</b>(TDD)</td></tr>
-    <tr><td class="k">6. AI 에이전트 인터페이스</td><td>6시간 미입력 알림·미인식 워크리스트·오버듀 대시보드의 운영 주체가 이미 AI(7/17) → V2 API를 처음부터 skin-seoul MCP 도구로 노출(1급 요건). BI는 PG 직접 + 월 배치 export(BQ 리드모델 제거 후 경로)</td></tr>
+    <tr><td class="k">6. AI 에이전트 인터페이스</td><td>6시간 미입력 알림·미인식 워크리스트·오버듀 대시보드의 운영 주체가 이미 AI(7/17) → V2 API를 처음부터 skin-seoul MCP 도구로 노출(1급 요건). BI는 Spanner 직접 쿼리 + 월 배치 export(BQ 리드모델 제거 후 경로)</td></tr>
     <tr><td class="k">마일스톤(안)</td><td>M0 골격(아키텍처+문서 2건) → M1 재고 원장+예약 → M2 스캔 스테이션+RTO → M3 마이그레이션/컷오버 → M4 에이전트·관측성. 티켓 트리는 SSD-4967 하위</td></tr>
   </table>
 </div>
@@ -121,9 +121,9 @@
   <table>
     <tr><td class="k">검증 결과</td><td>진성 결손 1(wc_status — 재도입으로 해소) + 블로커 규칙 3 + 결정 5. 출고/예약 write-path의 ❌들은 「스키마 구멍」이 아니라 <b>리빌드가 원래 하려던 재작성 범위</b>(OutboundStockHandler+프로세서4+예약 핸들러 = M1 본체)임을 3검증단이 확인. 환불 핸들러 4종은 fulfilment 테이블 무접촉 = OOS 경계 정확</td></tr>
     <tr><td class="k">wc_status 하이브리드 재도입</td><td>결제쪽 상태(on-hold/refunded…)는 라인 파생 불가 → 목록 필터·스위퍼 비교용 캐시 컬럼. <b>writer는 시간당 스위퍼뿐</b>(WC 읽는 김에 기록=비용 0). 단건은 라이브 조회 유지</td></tr>
-    <tr><td class="k">R8 마케팅 멱등</td><td>segments (campaign_id, influencer_id) partial UNIQUE + lookup-first — MKT- PK가 구조적으로 막던 재제출 중복 무료배송 계승</td></tr>
+    <tr><td class="k">R8 마케팅 멱등</td><td>segments (campaign_id, influencer_id) UNIQUE(Spanner: generated column + NULL_FILTERED unique index) + lookup-first — MKT- PK가 구조적으로 막던 재제출 중복 무료배송 계승</td></tr>
     <tr><td class="k">R9 채널 판별</td><td>「WC 주문인가」는 id 모양(/^\d+$/)이 아니라 channel 컬럼으로 — 전 채널 순차 발번에서 V1 숫자-가드가 마케팅 주문에 WC 호출 오발화하는 것 방지. WC 호출 대상은 line.wc_order_id 유도(+인덱스)</td></tr>
-    <tr><td class="k">R10 머지 빈 껍데기</td><td>라인 re-parent 후 원본=0라인 → rollup 트리거에 「빈 라인셋=MERGED」 정의 + flags.merged_into 마커 — 활성 목록 오염 방지</td></tr>
+    <tr><td class="k">R10 머지 빈 껍데기</td><td>라인 re-parent 후 원본=0라인 → rollup 규칙(OrderRollupService)에 「빈 라인셋=MERGED」 정의 + flags.merged_into 마커 — 활성 목록 오염 방지</td></tr>
     <tr><td class="k">원장 정정 확정</td><td>ref_id=메타(델타 아님) → 정정 허용 + CORRECTION 이벤트. append-only는 delta에만 (SSD-4696 지원)</td></tr>
     <tr><td class="k">환불→라인 반영</td><td>현행에 프로듀서 없음(검증 발견) → <b>시간당 스위퍼가 겸임</b>: WC refunded 감지 시 라인 CANCELLED + reservation RELEASED(REFUNDED) — SSD-4448 픽스의 실제 집행 경로 명시</td></tr>
     <tr><td class="k">기타 확정</td><td>sourcing_cost 개명+원가 우선순위 · 라벨=S3 URL(blob 폐기) · 월별 예약량 이력=월말 스냅샷 배치(BI export, 테이블 아님) · line id 표기 명시 · 필수 인덱스: tracking(number,kind,occurred_at) · line(wc_order_id) · reservation(sku,state) · 목록용(order_placed_at, rollup_status, country, pic)</td></tr>
@@ -179,7 +179,7 @@
     <tr><td class="k">opsComments / pic / temporaryLocation</td><td>comments jsonb / pic_user / <b>temporary_location</b> (v9.1 추가 — SSD-5261 실존 기능)</td></tr>
     <tr><td class="k">auditEntry + ORDER_AUDIT_HISTORY 테이블</td><td>event (kind ORDER_OP) — operation은 코드 실측 19~20종(앱 간 enum drift 존재), 스펙의 「21종」 표기는 정정됨</td></tr>
     <tr><td class="k">requiresInbound</td><td>파생 — 라인 상태로 쿼리 계산</td></tr>
-    <tr><td class="k">오더 totalQuantity (RTO Total Items·Parxl 무게·긱 페이로드)</td><td><b>fulfillment_order.total_quantity</b> — v9.3 추가 (민철 확정). rollup 트리거가 라인에서 SUM 재계산하는 캐시 — V1 증감 카운터와 달리 드리프트 불가</td></tr>
+    <tr><td class="k">오더 totalQuantity (RTO Total Items·Parxl 무게·긱 페이로드)</td><td><b>fulfillment_order.total_quantity</b> — v9.3 추가 (민철 확정). OrderRollupService(트리거 대체 — Spanner는 트리거 없음, 앱 단일 갱신 경로)가 라인에서 SUM 재계산하는 캐시 — V1 증감 카운터와 달리 드리프트 불가</td></tr>
     <tr><td class="k">재고 StockBalanceItem.totalQuantity/totalReservedQuantity</td><td>저장 안 함(의도) — SUM(stock_balance.on_hand)·Σ reservation. V1의 총량↔로케이션맵 이중 부기 드리프트가 병의 근원이라 총량 컬럼 제거. 핫패스가 실측 느리면 캐시 행 승격</td></tr>
     <tr><td class="k">orderDate / orderMonth / orderDateTime</td><td><b>order_placed_at</b>(+파생 date/month) — v9.2 추가 (감사 C1: 목록 정렬·기간·월 필터의 근간)</td></tr>
     <tr><td class="k">status (WC 문자열)</td><td>v12 하이브리드 — 단건=라이브 조회(민철 방향 유지), 목록 필터·드리프트 비교=스위퍼 전용 wc_status 캐시(최종 검증: 결제쪽 상태는 라인 파생 불가가 판명). 취소/환불의 라인 반영(CANCELLED+released_reason)은 스위퍼가 겸임</td></tr>
@@ -196,7 +196,7 @@
     <tr><td class="s">1. 주문 유입</td><td>WC 웹훅 → <b>fulfillment_order</b> FO-발번 1행(channel WC, country US) + <b>fulfillment_order_line</b> 3행(카탈로그 조회로 부모 SKU·pack 해석 후 스냅샷) + 재고 있는 1라인은 <b>reservation</b> ACTIVE/ON_HAND(A1-1-1 핀) + <b>event</b>(ORDER_OP: ORDER_RECEIVED, source WOOCOMMERCE)</td></tr>
     <tr><td class="s">2. JIT 발주</td><td>긱워커가 쿠팡 결제 → line.jit_sourcing_cost ₩12,900 기록(7/14 미팅 요구) + <b>reservation</b> JIT_COMMITTED 2행 + 수 시간 뒤 트래킹 발급 → <b>tracking_number</b> kind SOURCING_INBOUND 2행. 6시간 미입력이면 <b>event</b>(SCAN) 기반 AI 알림(7/17 미팅)</td></tr>
     <tr><td class="s">3. 도착 스캔</td><td>택배 바코드 스캔 → tracking_number 인덱스 1회 히트(V1: 월별 GSI 스캔 수 초) → <b>event</b>(SCAN MATCHED) + <b>stock_movement</b> INBOUND(+1, WH#01, 멱등키) + <b>stock_balance</b> +1 (같은 트랜잭션 → 즉시 화면 반영) + reservation kind ON_HAND 전환(같은 트랜잭션 — 순간 oversell 창 차단) + line INBOUNDED</td></tr>
-    <tr><td class="s">4. 마지막 입고</td><td>남은 JIT 1개 도착 → 전 라인 READY → rollup_status 트리거 갱신 → Ready-to-Outbound 목록 노출(stock_balance·line 인덱스 조회 — V1 실측 ~50초였던 화면)</td></tr>
+    <tr><td class="s">4. 마지막 입고</td><td>남은 JIT 1개 도착 → 전 라인 READY → rollup_status 갱신(OrderRollupService) → Ready-to-Outbound 목록 노출(stock_balance·line 인덱스 조회 — V1 실측 ~50초였던 화면)</td></tr>
     <tr><td class="s">5. 출고</td><td>일괄 아웃바운드 → <b>stock_movement</b> OUTBOUND 3행 + reservation CONSUMED + line OUTBOUNDED + <b>tracking_number</b> kind OUTBOUND(YUN YT-웨이빌, box_seq 1) + 라벨 자동 출력(print 멱등키) + <b>WC 비동기 호출</b>(일괄이면 batch API 100건/요청)로 prepare-shipment — 실패분은 시간당 스위퍼가 재푸시</td></tr>
     <tr><td class="s">6. 마감</td><td>저녁 마감 스캔 → <b>ops_doc</b> CLOSING + <b>ops_doc_line</b> 박스행(중복 스캔은 UNIQUE 위반 → 경고+음성) → 정확 일치 확정 → tracking.close_doc_id 세팅 → 이후 아웃바운드 취소 차단</td></tr>
     <tr><td class="s">7. 배송 추적</td><td>YUN 웹훅 PICKED_UP→IN_TRANSIT→DELIVERED → <b>tracking_number.events jsonb</b> 누적(구간별 소요 = Dynamic SLA P70/P90 원천) + unified_status 갱신 + WC 비동기 호출로 shipped→completed</td></tr>
@@ -206,7 +206,8 @@
 <div class="mapbox">
   <b>결정 히스토리 — 26개에서 9개, 그리고 확정까지</b>
   <h4>🔒 확정 (2026-07-26)</h4>
-  <table><tr><td class="k">스키마 동결</td><td>민철 컨펌 — v12를 기준으로 아키텍처/구현 착수. 이후 변경은 마이그레이션 규칙과 함께 버전업으로만</td></tr></table>
+  <table><tr><td class="k">스키마 동결</td><td>민철 컨펌 — v12를 기준으로 아키텍처/구현 착수. 이후 변경은 마이그레이션 규칙과 함께 버전업으로만</td></tr>
+  <tr><td class="k">DB = Cloud Spanner</td><td>민철 확정(2026-07-26) — Cloud SQL(PG) 권고를 뒤집고 기존 Spanner 인스턴스(dev/staging/prod 라이브) 신규 DB로. 근거: 신설 인프라 0(운영·백업·failover 기존 것), Gigwork 주문과 같은 DB, DDL 운영 절차 확립. 조정 3건: 트리거 없음→앱 단일 경로 · partial UNIQUE→NULL_FILTERED · 순차 발번은 현 볼륨 무해</td></tr></table>
   <h4>🔵 v10 — 시맨틱 전수조사 + MKT- 포맷 폐지 (2026-07-26)</h4>
   <table>
     <tr><td class="k">행동 규칙 계약 신설</td><td>서비스 규칙 7 + 마이그레이션 규칙 6 — 코드가 지켜온 시맨틱(pack 1회 곱셈·자기 예약 제외·Existing=INBOUNDED·멱등키 시드 등)을 명문화. V1 실버그 3건 발견(마케팅 pack 미경유·머지 유령 예약·마케팅 캔슬 오류)</td></tr>
