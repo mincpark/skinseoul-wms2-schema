@@ -100,7 +100,7 @@
 
 <div class="decision">🔑 <b>핵심 아키텍처 결정 (민철 확정 2026-07-26)</b>: V2는 별도 서비스가 아니라 <b>SkinSeoulFacade `apps/internal-api` 안의 새 도메인(`domain/fulfillment`) + 기존 Cloud Spanner 인스턴스에 신규 DB</b>로 짓는다. 이유 — ① 배포 파이프라인·인증(ApiKeyGuard/JWT)·모듈 패턴 재사용, ② V1(DDB)과 같은 프로세스에서 병행 운영 → 컷오버가 라우팅 스위치 수준, ③ <b>DB 신설 인프라 0</b> — dev/staging/prod Spanner 인스턴스가 이미 라이브(운영·백업·failover·DDL 절차 기존 것 그대로), Gigwork 주문과 같은 DB라 JIT 연동이 로컬 조인. 프론트는 기존 AdminDashboard에 화면 8종 추가 — 신규 앱 없음.</div>
 
-<div class="decision blue">⚙️ <b>Spanner 전환에 따른 설계 조정 3건</b> (스키마 v12 자체는 불변 — 구현 방식만): ① <b>트리거 없음</b> → rollup_status·total_quantity 재계산은 <b>OrderRollupService 단일 갱신 경로</b>로 강제(라인을 바꾸는 모든 핸들러가 같은 txn에서 호출 — 경로가 하나라 stale 불가) ② <b>partial UNIQUE 없음</b> → 마케팅 멱등(R8)은 generated column + NULL_FILTERED unique index(동일 효과) ③ <b>순차 발번 핫스팟</b>은 초당 수천 write 얘기 — 현 볼륨(하루 수백~수천 주문)에선 무해, 7/6 확정(사람이 읽는 순차 번호) 그대로.<br>
+<div class="decision blue">⚙️ <b>Spanner 전환에 따른 설계 조정 3건</b> (스키마 v12 자체는 불변 — 구현 방식만): ① <b>트리거 없음</b> → rollup_status·total_quantity 재계산은 <b>OrderRollupCalculator 단일 갱신 경로</b>로 강제(라인을 바꾸는 모든 핸들러가 같은 txn에서 호출 — 경로가 하나라 stale 불가) ② <b>partial UNIQUE 없음</b> → 마케팅 멱등(R8)은 generated column + NULL_FILTERED unique index(동일 효과) ③ <b>순차 발번 핫스팟</b>은 초당 수천 write 얘기 — 현 볼륨(하루 수백~수천 주문)에선 무해, 7/6 확정(사람이 읽는 순차 번호) 그대로.<br>
 📮 <b>Queue 안 만든다 (민철 논의 확정)</b>: WC push는 요청받은 pod가 건별 비동기(캡 5~10/pod) — 실패는 <b>시간당 스위퍼가 곧 재시도 큐</b>(전달 보장 이미 확보, pod 간 조율 불필요). 스케줄 실행(스위퍼·배치)은 <b>기존 SkinSeoulBatch(GCP Batch) 재사용</b> — 잡은 internal-api의 wms2 엔드포인트를 호출만 하고 로직은 도메인 안에(확립된 batch→internal-api 패턴), 단일 실행 보장이라 리더 선출 불요. 스캔/출고는 동기 트랜잭션(Queue 금지 영역). 대량 파이프라인(수만 건 임포트·대량 라벨)이 실제로 생기면 그때 <b>Cloud Tasks</b>로 — 미리 깔 이유 없음.</div>
 
 <h2><i class="dot" style="background:var(--a)"></i>전체 그림 — 5층 레이어</h2>
@@ -173,7 +173,7 @@
   </div>
   <div class="ginfo" id="ginfo"><b>사용법</b> — 노드 클릭: 그 클래스가 누구를 부르고 누구에게 불리는지. 시나리오 버튼: 요청 하나가 코드 어디를 지나가는지 ①②③ 순번으로.</div>
 </div>
-<div class="caption">읽는 법 — <b>StockLedgerService</b>: stock_movement(원장)와 stock_balance를 쓰는 유일한 클래스. 다른 어떤 코드도 재고를 직접 못 만짐(V1은 아무 핸들러나 카운터를 증감해서 드리프트). · <b>ReservationService</b>: 예약의 5개 전이(reserve→flip→consume/release)가 전부 여기 — SSD-4448(예약 영구 잠김)이 구조적으로 불가능해지는 지점. · <b>OrderRollupService</b>: Spanner엔 트리거가 없어서 앱이 rollup을 재계산하는데, 경로를 이 한 클래스로 강제해 stale을 막음. · <b>CatalogGateway</b>: 카탈로그 미러 금지 결정의 코드 형태 — WP를 그때그때 조회.</div>
+<div class="caption">읽는 법 — <b>StockLedger</b>: stock_movement(원장)와 stock_balance를 쓰는 유일한 클래스. 다른 어떤 코드도 재고를 직접 못 만짐(V1은 아무 핸들러나 카운터를 증감해서 드리프트). · <b>ReservationBook</b>: 예약의 5개 전이(reserve→flip→consume/release)가 전부 여기 — SSD-4448(예약 영구 잠김)이 구조적으로 불가능해지는 지점. · <b>OrderRollupCalculator</b>: Spanner엔 트리거가 없어서 앱이 rollup을 재계산하는데, 경로를 이 한 클래스로 강제해 stale을 막음. · <b>CatalogGateway</b>: 카탈로그 미러 금지 결정의 코드 형태 — WP를 그때그때 조회.</div>
 
 <h2><i class="dot" style="background:var(--b)"></i>핵심 트랜잭션 — 출고 스캔의 실제 흐름 <span style="font-size:11px;color:var(--muted);font-weight:400">(단계별 재생)</span></h2>
 <div class="seqwrap">
@@ -202,7 +202,7 @@
 <tr><td class="s">취소·환불</td><td>WC 웹훅/스위퍼 감지 → 라인 CANCELLED + 예약 RELEASED(reason) — SSD-4448 구조적 해소. 환불 승인 플로우 자체는 기존 저장소(OOS)</td><td class="c">WcSweepHandler → line·reservation·event</td></tr>
 <tr><td class="s">배송 추적</td><td>캐리어 웹훅 → tracking events 누적(구간 소요=Dynamic SLA 원천) → unified 매핑 → WC push(가드)</td><td class="c">WebhookController → tracking_number.events·notifications</td></tr>
 <tr><td class="s">미인식 스캔</td><td>인식 실패 → event(SCAN·UNRECOGNIZED)+추정 제품+사진 → PIC 배정 → 6시간 AI 에스컬레이션 → 해결</td><td class="c">Scan API + AI 에이전트 → event</td></tr>
-<tr><td class="s">머지/클론</td><td>머지=라인 re-parent(예약 자동 추종), 빈 껍데기=MERGED(R10, OrderRollupService) / 클론=라인 재발급, 예약 복사 금지</td><td class="c">MergeOrdersHandler → line.order_id UPDATE·event</td></tr>
+<tr><td class="s">머지/클론</td><td>머지=라인 re-parent(예약 자동 추종), 빈 껍데기=MERGED(R10, OrderRollupCalculator) / 클론=라인 재발급, 예약 복사 금지</td><td class="c">MergeOrdersHandler → line.order_id UPDATE·event</td></tr>
 <tr><td class="s">모니터링·BI</td><td>원장 드리프트 검증 뷰 · 스캔 P95 메트릭 · 스위퍼 실패 알람(Grafana) · 월말 스냅샷+월 배치 export(배송 성능·COGS·손실)</td><td class="c">SkinSeoulBatch(GCP Batch) + Grafana</td></tr>
 </table>
 </div>
@@ -225,7 +225,7 @@
 
 <script>
 // ── 인터랙티브 클래스 다이어그램 ──────────────────────────────
-const COLS = ['Controllers (얇게)','Handlers (유스케이스당 1클래스)','도메인 서비스 (정합성 규칙의 집)','데이터 / 외부'];
+const COLS = ['Controllers (얇게)','Handlers (유스케이스당 1클래스)','도메인 (정합성 규칙의 집 — SQL 없음)','데이터 / 외부'];
 const NODES = [
  {id:'ScanController',c:0,t:'ScanController',m:'resolve · inbound · outbound · return',w:'스캔 스테이션의 유일한 진입점. 파싱·인증만 하고 핸들러로 위임 — 컨트롤러에 로직 없음.'},
  {id:'OrderController',c:0,t:'OrderController',m:'CRUD · RTO 목록 · 피킹 배치 · 머지/홀드',w:'어드민 화면 8종 중 주문 계열이 붙는 곳. RTO 목록은 rollup+라인 인덱스 조회(V1 실측 ~50초 → 인덱스 1히트).'},
@@ -239,15 +239,15 @@ const NODES = [
  {id:'ConfirmClosing',c:1,t:'ConfirmClosingHandler',m:'마감 확정 (박스 UNIQUE·음성 경고)',w:'박스 전체 재스캔 → UNIQUE(doc, box_seq)로 중복 DB 차단 → 확정 후 아웃바운드 취소 차단.'},
  {id:'ConfirmAudit',c:1,t:'ConfirmStockAuditHandler',m:'실사 확정 → AUDIT_ADJUST',w:'차이 확정분만 원장에 반영 — 실사도 원장의 한 행일 뿐(별도 보정 경로 없음).'},
  {id:'WcSweep',c:1,t:'WcSweepHandler',g:'SkinSeoulBatch 트리거',m:'시간당 WC 대사',w:'단일 실행이 필요한 유일한 작업 — 기존 SkinSeoulBatch(GCP Batch)가 시간당 이 wms2 엔드포인트를 호출(확립된 batch→internal-api 패턴). 리더 선출·Queue 불요.'},
- {id:'ScanResolver',c:2,t:'ScanResolverService',m:'트래킹·바코드·주문번호·박스순번 → 1회 해석',w:'뭘 찍었는지 몰라도 됨 — tracking_number 만능 인덱스 + 카탈로그 바코드 + 주문번호를 한 번에 해석.'},
- {id:'StockLedger',c:2,t:'StockLedgerService',g:'원장 유일 writer',core:1,m:'inbound · outbound · auditAdjust · cancel — 원장 append + 밸런스 same-txn',w:'stock_movement와 stock_balance를 쓰는 유일한 클래스. V1은 아무 핸들러나 카운터를 증감해서 드리프트 — V2는 이 문을 안 지나면 재고를 못 바꿈. 멱등키로 더블스캔 무해.'},
- {id:'Reservation',c:2,t:'ReservationService',core:1,m:'reserveOnHand · commitJit · flipToOnHand · consume · release',w:'예약의 5개 전이가 전부 여기. SSD-4448(예약 영구 잠김)이 구조적으로 불가능해지는 지점 — 모든 해제에 reason이 남음.'},
- {id:'Rollup',c:2,t:'OrderRollupService',g:'트리거 대체',core:1,m:'recalc: rollup_status + total_quantity · 0라인=MERGED(R10)',w:'Spanner엔 트리거가 없어 앱이 재계산 — 경로를 이 한 클래스로 강제해 stale 차단. 라인을 바꾸는 모든 핸들러가 같은 txn에서 호출.'},
- {id:'OrderNumber',c:2,t:'OrderNumberService',m:'전 채널 순차 발번',w:'7/6 확정: 사람이 읽는 순차 번호(UUID 금지). Spanner 핫스팟 우려는 현 볼륨(초당 1건 미만)에선 무해.'},
- {id:'WcSync',c:2,t:'WcSyncService',core:1,m:'pushStatus(비동기 · R4 가드) + sweep(시간당 대사)',w:'WC로 나가는 모든 상태 push의 단일 경로 — 터미널 다운그레이드 가드(R4)가 여기 한 곳에. 실패는 sweep이 줍는다(재시도 큐 겸임).'},
- {id:'LabelRender',c:2,t:'LabelRenderService',m:'YUN/Deleo 자체 렌더 → S3 URL',w:'7/6 확정: YUN도 Deleo 방식으로 자체 렌더(외부 라벨 로딩이 스캔을 블로킹하던 문제 제거). print 멱등키.'},
+ {id:'ScanResolver',c:2,t:'ScanResolver',m:'트래킹·바코드·주문번호·박스순번 → 1회 해석',w:'뭘 찍었는지 몰라도 됨 — tracking_number 만능 인덱스 + 카탈로그 바코드 + 주문번호를 한 번에 해석.'},
+ {id:'StockLedger',c:2,t:'StockLedger',g:'원장 유일 writer',core:1,m:'inbound · outbound · auditAdjust · cancel — 원장 append + 밸런스 same-txn',w:'stock_movement와 stock_balance를 쓰는 유일한 클래스. V1은 아무 핸들러나 카운터를 증감해서 드리프트 — V2는 이 문을 안 지나면 재고를 못 바꿈. 멱등키로 더블스캔 무해.'},
+ {id:'Reservation',c:2,t:'ReservationBook',core:1,m:'reserveOnHand · commitJit · flipToOnHand · consume · release',w:'예약의 5개 전이가 전부 여기. SSD-4448(예약 영구 잠김)이 구조적으로 불가능해지는 지점 — 모든 해제에 reason이 남음.'},
+ {id:'Rollup',c:2,t:'OrderRollupCalculator',g:'트리거 대체',core:1,m:'recalc: rollup_status + total_quantity · 0라인=MERGED(R10)',w:'Spanner엔 트리거가 없어 앱이 재계산 — 경로를 이 한 클래스로 강제해 stale 차단. 라인을 바꾸는 모든 핸들러가 같은 txn에서 호출.'},
+ {id:'OrderNumber',c:2,t:'OrderNumberIssuer',m:'전 채널 순차 발번',w:'7/6 확정: 사람이 읽는 순차 번호(UUID 금지). Spanner 핫스팟 우려는 현 볼륨(초당 1건 미만)에선 무해.'},
+ {id:'WcSync',c:2,t:'WcSyncGateway',core:1,m:'pushStatus(비동기 · R4 가드) + sweep(시간당 대사)',w:'WC로 나가는 모든 상태 push의 단일 경로 — 터미널 다운그레이드 가드(R4)가 여기 한 곳에. 실패는 sweep이 줍는다(재시도 큐 겸임).'},
+ {id:'LabelRender',c:2,t:'LabelRenderer',m:'YUN/Deleo 자체 렌더 → S3 URL',w:'7/6 확정: YUN도 Deleo 방식으로 자체 렌더(외부 라벨 로딩이 스캔을 블로킹하던 문제 제거). print 멱등키.'},
  {id:'Catalog',c:2,t:'CatalogGateway',m:'라이브 조회 + 앱 캐시 (미러 없음)',w:'카탈로그 미러 금지 결정의 코드 형태 — WP를 그때그때 조회(단건 수 ms) + 핫 SKU 메모리 캐시.'},
- {id:'Repos',c:3,t:'SpannerRepositories',g:'테이블당 1클래스 ×9',m:'order · line · movement · balance · reservation · tracking · ops_doc(+line) · event',w:'쿼리는 전부 여기 — 핸들러/서비스에 SQL 없음. 같은 Spanner 인스턴스라 Gigwork 주문과 로컬 조인.'},
+ {id:'Repos',c:3,t:'SpannerRepositories',g:'Repository — 모든 SQL은 여기만',m:'order · line · movement · balance · reservation · tracking · ops_doc(+line) · event',w:'쿼리는 전부 여기 — 핸들러/서비스에 SQL 없음. 같은 Spanner 인스턴스라 Gigwork 주문과 로컬 조인.'},
  {id:'Ext',c:3,t:'외부',m:'WooCommerce · 캐리어 4사 · S3 · 쿠팡',w:'나가는 호출: WC push(비동기)·라벨 S3 업로드. 들어오는 건 전부 WebhookController로.'},
 ];
 const EDGES = [
@@ -269,7 +269,7 @@ const FLOWS = {
  jit:{seq:['ScanController','ScanResolver','InboundScan','StockLedger','Reservation','Rollup','Repos'],d:'<b>JIT 도착 입고</b> — 택배 스캔 → 리졸버가 소싱 트래킹 1히트 → 같은 txn: 원장 INBOUND + 밸런스 +1 + 예약 JIT_COMMITTED→ON_HAND 전환 → 라인 INBOUNDED → rollup 갱신. 순간 oversell 창이 트랜잭션으로 닫힘.'},
  outbound:{seq:['ScanController','OutboundOrders','Reservation','StockLedger','Rollup','LabelRender','WcSync','Repos'],d:'<b>출고</b> — 아래 시퀀스 다이어그램의 경로. 예약 consume(R2) + 원장 OUTBOUND + rollup을 한 txn으로 커밋 후, 라벨 렌더와 WC push는 밖에서 비동기.'},
  merge:{seq:['OrderController','MergeOrders','Rollup','Repos'],d:'<b>머지</b> — 라인 re-parent(order_id UPDATE)만으로 예약·원장 자동 추종. 원본 주문은 0라인 → rollup이 MERGED 판정(R10). V1 유령 예약 버그의 해소 경로.'},
- ops:{seq:['OpsDocController','ConfirmClosing','ConfirmAudit','StockLedger','Repos'],d:'<b>마감·실사</b> — 마감: 박스 재스캔 → ops_doc_line UNIQUE로 중복 차단 → 확정. 실사: 차이 확정분만 StockLedgerService.auditAdjust로 원장 반영.'},
+ ops:{seq:['OpsDocController','ConfirmClosing','ConfirmAudit','StockLedger','Repos'],d:'<b>마감·실사</b> — 마감: 박스 재스캔 → ops_doc_line UNIQUE로 중복 차단 → 확정. 실사: 차이 확정분만 StockLedger.auditAdjust로 원장 반영.'},
  sweep:{seq:['WcSweep','WcSync','Ext','Reservation','Repos'],d:'<b>스위퍼</b> — SkinSeoulBatch(GCP Batch)가 시간당 트리거: WC와 WMS 상태 대사 → 유실 push 재전송(자가 치유) + wc_status 캐시 기록 + WC refunded 감지 시 라인 CANCELLED·예약 RELEASED(REFUNDED). Queue가 필요 없는 이유가 이 안전망.'},
 };
 const graph = document.getElementById('graph');
