@@ -96,9 +96,9 @@
 <body>
 <h1>OMS/WMS 2.0 — 시스템 아키텍처 <span style="font-size:12px;color:var(--muted);font-weight:400">(v2 · Spanner 확정 반영 · 스키마 v12 기반 · SSD-4967)</span></h1>
 <div class="sub">스키마(확정 v12): <a href="./index.html">스키마 페이지</a> · 태그: <span class="tag n">신규</span> 새로 만드는 것 · <span class="tag r">재사용</span> 기존 시스템 그대로 · <span class="tag h">하드웨어</span></div>
-<div style="background:rgba(91,141,239,.10); border:1.5px solid var(--a); border-radius:12px; padding:10px 16px; margin-bottom:14px; font-size:13px;">🧊 <b>PLAN LOCKED (민철 확정 2026-07-26)</b> — 스키마 v12 · 아키텍처(Spanner·wms2 도메인) · 배포 전략(2차원 매트릭스) 3문서는 <b>하나의 확정 플랜</b>이다. 이후 어떤 변경도 <b>민철 명시 승인 + 버전업</b>으로만. 구현 착수됨 — dev Spanner에 <code>erp</code> DB 생성·스키마 v12 적용 완료(DB명 erp로 일반화 — OMS+WMS+미래 도메인, 민철)(2026-07-26, 브랜치 <code>work/wms2-spanner-ddl</code>).</div>
+<div style="background:rgba(91,141,239,.10); border:1.5px solid var(--a); border-radius:12px; padding:10px 16px; margin-bottom:14px; font-size:13px;">🧊 <b>PLAN LOCKED (민철 확정 2026-07-26)</b> — 스키마 v12 · 아키텍처(Spanner·fulfillment 도메인) · 배포 전략(2차원 매트릭스) 3문서는 <b>하나의 확정 플랜</b>이다. 이후 어떤 변경도 <b>민철 명시 승인 + 버전업</b>으로만. 구현 착수됨 — dev Spanner에 <code>fulfillment</code> DB 생성·스키마 v12 적용 완료(도메인·DB명 = fulfillment — 민철 확정: ERP는 과확장, 정확한 이름은 fulfillment)(2026-07-26, 브랜치 <code>work/wms2-spanner-ddl</code>).</div>
 
-<div class="decision">🔑 <b>핵심 아키텍처 결정 (민철 확정 2026-07-26)</b>: V2는 별도 서비스가 아니라 <b>SkinSeoulFacade `apps/internal-api` 안의 새 도메인(`domain/wms2`) + 기존 Cloud Spanner 인스턴스에 신규 DB</b>로 짓는다. 이유 — ① 배포 파이프라인·인증(ApiKeyGuard/JWT)·모듈 패턴 재사용, ② V1(DDB)과 같은 프로세스에서 병행 운영 → 컷오버가 라우팅 스위치 수준, ③ <b>DB 신설 인프라 0</b> — dev/staging/prod Spanner 인스턴스가 이미 라이브(운영·백업·failover·DDL 절차 기존 것 그대로), Gigwork 주문과 같은 DB라 JIT 연동이 로컬 조인. 프론트는 기존 AdminDashboard에 화면 8종 추가 — 신규 앱 없음.</div>
+<div class="decision">🔑 <b>핵심 아키텍처 결정 (민철 확정 2026-07-26)</b>: V2는 별도 서비스가 아니라 <b>SkinSeoulFacade `apps/internal-api` 안의 새 도메인(`domain/fulfillment`) + 기존 Cloud Spanner 인스턴스에 신규 DB</b>로 짓는다. 이유 — ① 배포 파이프라인·인증(ApiKeyGuard/JWT)·모듈 패턴 재사용, ② V1(DDB)과 같은 프로세스에서 병행 운영 → 컷오버가 라우팅 스위치 수준, ③ <b>DB 신설 인프라 0</b> — dev/staging/prod Spanner 인스턴스가 이미 라이브(운영·백업·failover·DDL 절차 기존 것 그대로), Gigwork 주문과 같은 DB라 JIT 연동이 로컬 조인. 프론트는 기존 AdminDashboard에 화면 8종 추가 — 신규 앱 없음.</div>
 
 <div class="decision blue">⚙️ <b>Spanner 전환에 따른 설계 조정 3건</b> (스키마 v12 자체는 불변 — 구현 방식만): ① <b>트리거 없음</b> → rollup_status·total_quantity 재계산은 <b>OrderRollupService 단일 갱신 경로</b>로 강제(라인을 바꾸는 모든 핸들러가 같은 txn에서 호출 — 경로가 하나라 stale 불가) ② <b>partial UNIQUE 없음</b> → 마케팅 멱등(R8)은 generated column + NULL_FILTERED unique index(동일 효과) ③ <b>순차 발번 핫스팟</b>은 초당 수천 write 얘기 — 현 볼륨(하루 수백~수천 주문)에선 무해, 7/6 확정(사람이 읽는 순차 번호) 그대로.<br>
 📮 <b>Queue 안 만든다 (민철 논의 확정)</b>: WC push는 요청받은 pod가 건별 비동기(캡 5~10/pod) — 실패는 <b>시간당 스위퍼가 곧 재시도 큐</b>(전달 보장 이미 확보, pod 간 조율 불필요). 스케줄 실행(스위퍼·배치)은 <b>기존 SkinSeoulBatch(GCP Batch) 재사용</b> — 잡은 internal-api의 wms2 엔드포인트를 호출만 하고 로직은 도메인 안에(확립된 batch→internal-api 패턴), 단일 실행 보장이라 리더 선출 불요. 스캔/출고는 동기 트랜잭션(Queue 금지 영역). 대량 파이프라인(수만 건 임포트·대량 라벨)이 실제로 생기면 그때 <b>Cloud Tasks</b>로 — 미리 깔 이유 없음.</div>
@@ -123,7 +123,7 @@
 </div>
 <div class="arrows">↑↓ REST (기존 ApiRouting 패턴)</div>
 <div class="layer">
-  <div class="lt">③ 백엔드 — SkinSeoulFacade apps/internal-api 안의 <b>domain/wms2</b> <span class="tag n">신규 도메인</span></div>
+  <div class="lt">③ 백엔드 — SkinSeoulFacade apps/internal-api 안의 <b>domain/fulfillment</b> <span class="tag n">신규 도메인</span></div>
   <div class="boxes">
     <div class="box new"><b>Scan API</b><div class="m">스캔 리졸버(트래킹/바코드/주문번호/박스순번 → 한 번에 해석) · 입고/출고/취소 · 멱등키 · event(SCAN) 기록</div></div>
     <div class="box new"><b>Order/RTO API</b><div class="m">주문·라인·예약 CRUD, RTO 목록(rollup+라인 인덱스), 머지=re-parent, 홀드, 피킹 배치 생성(사행 정렬)</div></div>
@@ -153,7 +153,7 @@
   </div>
 </div>
 
-<h2><i class="dot" style="background:var(--f)"></i>소프트웨어 구조 — domain/wms2 클래스 다이어그램 <span style="font-size:11px;color:var(--muted);font-weight:400">(인터랙티브)</span></h2>
+<h2><i class="dot" style="background:var(--f)"></i>소프트웨어 구조 — domain/fulfillment 클래스 다이어그램 <span style="font-size:11px;color:var(--muted);font-weight:400">(인터랙티브)</span></h2>
 <div class="caption">기존 Facade 컨벤션 그대로: Controller(얇게) → 유스케이스당 Handler 1클래스 → 도메인 서비스 → 테이블당 Repository 1클래스. <b>노드를 클릭</b>하면 연결이 하이라이트되고, <b>시나리오 버튼</b>을 누르면 그 시나리오가 지나가는 경로가 순번과 함께 표시된다.</div>
 <div class="graphwrap">
   <div class="flowbar"><span>시나리오 경로:</span>
@@ -214,7 +214,7 @@
 
 <h2><i class="dot" style="background:var(--f)"></i>마일스톤</h2>
 <div class="ms">
-  <div class="msbox"><b>M0 · 골격</b><div class="m">Spanner 신규 DB(3환경, DDL v12 — migrations 패턴) · wms2 도메인 스캐폴드 · 상태머신 정본+WC 계약 문서 2건</div></div>
+  <div class="msbox"><b>M0 · 골격</b><div class="m">Spanner 신규 DB(3환경, DDL v12 — migrations 패턴) · fulfillment 도메인 스캐폴드 · 상태머신 정본+WC 계약 문서 2건</div></div>
   <div class="msbox"><b>M1 · 재고 코어</b><div class="m">StockLedger+Reservation+Rollup 서비스 3종 (최대 재작성 범위: OutboundStock+프로세서4+예약 핸들러 대체) · 행동 계약 R1~R10 integ 테스트 고정</div></div>
   <div class="msbox"><b>M2 · 스캔 스테이션</b><div class="m">Scan API·리졸버·RTO·피킹 배치·라벨 렌더러+프린트 에이전트·마감·실사 — 화면 8종 연결</div></div>
   <div class="msbox"><b>M3 · 통합·마이그레이션</b><div class="m">WC 스위퍼·캐리어 웹훅 재홈·마이그레이션 도구+검증 리포트·병행 운영·컷오버</div></div>
@@ -346,7 +346,7 @@ window.addEventListener('load',()=>setTimeout(drawEdges,80));
 setTimeout(drawEdges,300);
 
 // ── 시퀀스 스테퍼 ──────────────────────────────
-const P = ['스캔 스테이션','ScanController','OutboundOrders\nHandler','Reservation\nService','StockLedger\nService','OrderRollup\nService','Spanner\n(erp DB)','LabelRender\nService','프린트\n에이전트','WooCommerce'];
+const P = ['스캔 스테이션','ScanController','OutboundOrders\nHandler','Reservation\nService','StockLedger\nService','OrderRollup\nService','Spanner\n(fulfillment DB)','LabelRender\nService','프린트\n에이전트','WooCommerce'];
 const STEPS = [
  {f:0,t:1,l:'송장/주문번호 스캔',d:'작업자가 스캔건으로 찍는다. 클릭-애니웨어 포커스 — 화면 아무 데나 찍혀도 입력된다.'},
  {f:1,t:2,l:'outbound(orderId)',d:'컨트롤러는 파싱·인증만 하고 핸들러로 위임.'},
