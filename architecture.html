@@ -96,7 +96,7 @@
 <body>
 <h1>OMS/WMS 2.0 — 시스템 아키텍처 <span style="font-size:12px;color:var(--muted);font-weight:400">(v2 · Spanner 확정 반영 · 스키마 v12 기반 · SSD-4967)</span></h1>
 <div class="sub">스키마(확정 v12): <a href="./index.html">스키마 페이지</a> · 태그: <span class="tag n">신규</span> 새로 만드는 것 · <span class="tag r">재사용</span> 기존 시스템 그대로 · <span class="tag h">하드웨어</span></div>
-<div style="background:rgba(91,141,239,.10); border:1.5px solid var(--a); border-radius:12px; padding:10px 16px; margin-bottom:14px; font-size:13px;">🧊 <b>PLAN LOCKED (민철 확정 2026-07-26)</b> — 스키마 v12 · 아키텍처(Spanner·wms2 도메인) · 배포 전략(2차원 매트릭스) 3문서는 <b>하나의 확정 플랜</b>이다. 이후 어떤 변경도 <b>민철 명시 승인 + 버전업</b>으로만. 구현 착수됨 — dev Spanner에 <code>wms</code> DB 생성·스키마 v12 적용 완료(2026-07-26, 브랜치 <code>work/wms2-spanner-ddl</code>).</div>
+<div style="background:rgba(91,141,239,.10); border:1.5px solid var(--a); border-radius:12px; padding:10px 16px; margin-bottom:14px; font-size:13px;">🧊 <b>PLAN LOCKED (민철 확정 2026-07-26)</b> — 스키마 v12 · 아키텍처(Spanner·wms2 도메인) · 배포 전략(2차원 매트릭스) 3문서는 <b>하나의 확정 플랜</b>이다. 이후 어떤 변경도 <b>민철 명시 승인 + 버전업</b>으로만. 구현 착수됨 — dev Spanner에 <code>erp</code> DB 생성·스키마 v12 적용 완료(DB명 erp로 일반화 — OMS+WMS+미래 도메인, 민철)(2026-07-26, 브랜치 <code>work/wms2-spanner-ddl</code>).</div>
 
 <div class="decision">🔑 <b>핵심 아키텍처 결정 (민철 확정 2026-07-26)</b>: V2는 별도 서비스가 아니라 <b>SkinSeoulFacade `apps/internal-api` 안의 새 도메인(`domain/wms2`) + 기존 Cloud Spanner 인스턴스에 신규 DB</b>로 짓는다. 이유 — ① 배포 파이프라인·인증(ApiKeyGuard/JWT)·모듈 패턴 재사용, ② V1(DDB)과 같은 프로세스에서 병행 운영 → 컷오버가 라우팅 스위치 수준, ③ <b>DB 신설 인프라 0</b> — dev/staging/prod Spanner 인스턴스가 이미 라이브(운영·백업·failover·DDL 절차 기존 것 그대로), Gigwork 주문과 같은 DB라 JIT 연동이 로컬 조인. 프론트는 기존 AdminDashboard에 화면 8종 추가 — 신규 앱 없음.</div>
 
@@ -346,7 +346,7 @@ window.addEventListener('load',()=>setTimeout(drawEdges,80));
 setTimeout(drawEdges,300);
 
 // ── 시퀀스 스테퍼 ──────────────────────────────
-const P = ['스캔 스테이션','ScanController','OutboundOrders\nHandler','Reservation\nService','StockLedger\nService','OrderRollup\nService','Spanner\n(wms DB)','LabelRender\nService','프린트\n에이전트','WooCommerce'];
+const P = ['스캔 스테이션','ScanController','OutboundOrders\nHandler','Reservation\nService','StockLedger\nService','OrderRollup\nService','Spanner\n(erp DB)','LabelRender\nService','프린트\n에이전트','WooCommerce'];
 const STEPS = [
  {f:0,t:1,l:'송장/주문번호 스캔',d:'작업자가 스캔건으로 찍는다. 클릭-애니웨어 포커스 — 화면 아무 데나 찍혀도 입력된다.'},
  {f:1,t:2,l:'outbound(orderId)',d:'컨트롤러는 파싱·인증만 하고 핸들러로 위임.'},

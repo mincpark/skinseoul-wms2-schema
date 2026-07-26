@@ -74,7 +74,7 @@
 <body>
 <h1>OMS/WMS 2.0 — 배포·컷오버 전략 <span style="font-size:12px;color:var(--muted);font-weight:400">(v2 · 2차원 반복 배포 — 민철 확정 모델 · SSD-4967)</span></h1>
 <div class="sub"><a href="./index.html">스키마 v12</a> · <a href="./architecture.html">아키텍처</a> · 창고는 못 멈춘다 — 전 과정 무중단 전제</div>
-<div style="background:rgba(91,141,239,.10); border:1.5px solid var(--a); border-radius:12px; padding:10px 16px; margin-bottom:14px; font-size:13px;">🧊 <b>PLAN LOCKED (민철 확정 2026-07-26)</b> — 스키마 v12 · 아키텍처(Spanner·wms2 도메인) · 배포 전략(2차원 매트릭스) 3문서는 <b>하나의 확정 플랜</b>이다. 이후 어떤 변경도 <b>민철 명시 승인 + 버전업</b>으로만. 구현 착수됨 — dev Spanner에 <code>wms</code> DB 생성·스키마 v12 적용 완료(2026-07-26, 브랜치 <code>work/wms2-spanner-ddl</code>).</div>
+<div style="background:rgba(91,141,239,.10); border:1.5px solid var(--a); border-radius:12px; padding:10px 16px; margin-bottom:14px; font-size:13px;">🧊 <b>PLAN LOCKED (민철 확정 2026-07-26)</b> — 스키마 v12 · 아키텍처(Spanner·wms2 도메인) · 배포 전략(2차원 매트릭스) 3문서는 <b>하나의 확정 플랜</b>이다. 이후 어떤 변경도 <b>민철 명시 승인 + 버전업</b>으로만. 구현 착수됨 — dev Spanner에 <code>erp</code> DB 생성·스키마 v12 적용 완료(DB명 erp로 일반화 — OMS+WMS+미래 도메인, 민철)(2026-07-26, 브랜치 <code>work/wms2-spanner-ddl</code>).</div>
 
 <div class="decision">🔑 <b>배포는 2차원으로 반복(iterative)한다 (민철 확정)</b> — <b>세로축 = 도메인</b>(이벤트 → 트래킹 → 작업문서 → 주문 → 재고·예약), <b>가로축 = 단계</b>(<b>① 섀도</b>: V2에 그림자 기록하며 오류 관찰 → <b>② 읽기 primary 전환</b>: V2가 primary, <b>V1은 자동 폴백</b> → <b>③ 쓰기 primary 전환</b>: 완전 이관). 각 도메인이 <b>독립적으로</b> ①→②→③ 사다리를 오르므로 빅뱅이 없다 — 항상 "한 도메인의 한 칸"만 전진하고, 어느 칸이든 한 칸 뒤로 되돌릴 수 있다. 유일한 특수 칸 = <b>재고·예약의 ③</b>(전역 불변식이라 도메인 내부를 더 못 쪼갬 → 실사날 런북으로 처리). V1·V2가 같은 internal-api 프로세스라 칸 전진은 배포가 아니라 <b>설정 플래그</b>다.</div>
 
