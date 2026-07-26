@@ -208,7 +208,7 @@
 
 <h2><i class="dot" style="background:var(--d)"></i>V1 병행 → 컷오버 — <a href="./cutover.html" style="color:var(--a)">배포·컷오버 전략 페이지 (인터랙티브)</a></h2>
 <div class="panelbox" style="font-size:12.5px">
-5단계: <b>P0</b> 백필+섀도 dual-write(섀도 라이터=M1~M6 마이그레이션 도구, best-effort) → <b>P1</b> 읽기 화면별 전환 → <b>P2a</b> 독립 도메인(event·tracking·ops_doc) 쓰기 전환 → <b>P2b</b> 재고 authority 플립(실사날 하룻밤, 역방향 dual-write 2주로 롤백 확보 — 유일한 원자적 스위치) → <b>P3</b> 청산(DDB·BQ 폐기). 게이트 = 일일 드리프트 리포트 0건 연속 7일. 창고 무중단 — 단계별 데이터 흐름·런북·green 기준은 <a href="./cutover.html">컷오버 페이지</a>.
+<b>2차원 반복 배포 (민철 확정)</b>: 도메인(이벤트→트래킹→작업문서→주문→재고·예약) × 단계(<b>① 섀도</b>: V2 그림자 기록+오류 관찰 → <b>② 읽기 primary=V2</b>, V1 자동 폴백 → <b>③ 쓰기 primary=V2</b> 완전 이관). 각 도메인이 독립적으로 사다리를 오르므로 항상 "한 도메인의 한 칸"만 전진 — 빅뱅 없음. 유일한 특수 칸 = 재고·예약 ③(전역 불변식 → 실사날 런북 + 역방향 dual-write 롤백 창). 게이트 = 도메인별 드리프트 0건 연속 7일 · ②→③은 폴백 발동률 ~0. 매트릭스·데이터 흐름·런북은 <a href="./cutover.html">컷오버 페이지</a>.
 </div>
 
 <h2><i class="dot" style="background:var(--f)"></i>마일스톤</h2>
