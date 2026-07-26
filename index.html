@@ -83,6 +83,7 @@
 <body>
 <h1>OMS/WMS 2.0 — 데이터 스키마 <span style="font-size:12px;color:var(--muted);font-weight:400">(🔒 v12 확정 — 민철 컨펌 2026-07-26 · SSD-5345)</span></h1>
 <div class="sub">→ <a href="./architecture.html" style="color:var(--a)"><b>아키텍처 페이지 (이 스키마 기반 시스템 설계)</b></a> · 테이블 카드 클릭 = 관계 하이라이트 · <span style="color:var(--b)">◆</span>=PK · <span style="color:var(--d)">→</span>=FK · <span style="color:var(--f)">{}</span>=JSON · <b>Cloud Spanner</b>(기존 인스턴스 신규 DB — 민철 확정 2026-07-26) · 전 테이블 공통 created_at/occurred_at</div>
+<div style="background:rgba(91,141,239,.10); border:1.5px solid var(--a); border-radius:12px; padding:10px 16px; margin-bottom:14px; font-size:13px;">🧊 <b>PLAN LOCKED (민철 확정 2026-07-26)</b> — 스키마 v12 · 아키텍처(Spanner·wms2 도메인) · 배포 전략(2차원 매트릭스) 3문서는 <b>하나의 확정 플랜</b>이다. 이후 어떤 변경도 <b>민철 명시 승인 + 버전업</b>으로만. 구현 착수됨 — dev Spanner에 <code>wms</code> DB 생성·스키마 v12 적용 완료(2026-07-26, 브랜치 <code>work/wms2-spanner-ddl</code>).</div>
 <div class="stats">
   <div class="stat">테이블 <b>9</b> <span style="color:var(--muted)">(v1 26 → v2 16 → v5 6 → 리뷰 v6 14 → 민철 챌린지 v9 9)</span></div>
   <div class="stat"><span class="keep">사수</span> <b>3</b> — order_line · stock_movement · tracking_number</div>
