@@ -206,9 +206,9 @@
 </table>
 </div>
 
-<h2><i class="dot" style="background:var(--d)"></i>V1 병행 → 컷오버</h2>
+<h2><i class="dot" style="background:var(--d)"></i>V1 병행 → 컷오버 — <a href="./cutover.html" style="color:var(--a)">배포·컷오버 전략 페이지 (인터랙티브)</a></h2>
 <div class="panelbox" style="font-size:12.5px">
-같은 internal-api 프로세스 안에서 <b>V1(DDB) 라이브 유지 + V2(Spanner) 구축</b> → 마이그레이션 도구가 M1~M6 규칙으로 이관(수량 재계산 금지·멱등키 timelineKey 시드·MKT- 해체·상태 매핑표) + <b>검증 리포트</b>(합계 불변식, 짝 안 맞는 pending, productId→sku 실패 건) → 화면 단위 점진 전환(읽기 먼저 → 쓰기 전환) → 재고 write 전환일은 실사와 함께(초기 원장 = 실사 기반 생성) → BQ 리드모델·DDB 폐기. 창고 무중단.
+5단계: <b>P0</b> 백필+섀도 dual-write(섀도 라이터=M1~M6 마이그레이션 도구, best-effort) → <b>P1</b> 읽기 화면별 전환 → <b>P2a</b> 독립 도메인(event·tracking·ops_doc) 쓰기 전환 → <b>P2b</b> 재고 authority 플립(실사날 하룻밤, 역방향 dual-write 2주로 롤백 확보 — 유일한 원자적 스위치) → <b>P3</b> 청산(DDB·BQ 폐기). 게이트 = 일일 드리프트 리포트 0건 연속 7일. 창고 무중단 — 단계별 데이터 흐름·런북·green 기준은 <a href="./cutover.html">컷오버 페이지</a>.
 </div>
 
 <h2><i class="dot" style="background:var(--f)"></i>마일스톤</h2>

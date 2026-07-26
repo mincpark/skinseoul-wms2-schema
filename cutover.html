@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OMS/WMS 2.0 배포·컷오버 전략</title>
+<style>
+  :root{
+    --bg:#0f1117; --panel:#171a23; --card:#1c2030; --border:#2a3045; --text:#e6e9f2; --muted:#8b93a7;
+    --a:#5b8def; --b:#e0b34d; --c:#e06c75; --d:#56b6c2; --e:#98c379; --f:#c678dd;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f5f6fa; --panel:#ffffff; --card:#ffffff; --border:#dde1ec; --text:#1c2130; --muted:#66708a; }
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",sans-serif; padding:24px; line-height:1.6; max-width:1200px; margin:0 auto;}
+  h1{font-size:22px; margin-bottom:4px;}
+  h2{font-size:17px; margin:28px 0 12px; display:flex; align-items:center; gap:8px;}
+  .sub{color:var(--muted); font-size:13px; margin-bottom:16px;}
+  .sub a{color:var(--a);}
+  .dot{width:10px; height:10px; border-radius:3px; display:inline-block;}
+  .decision{background:var(--panel); border:1px solid var(--b); border-radius:12px; padding:12px 16px; margin-bottom:16px; font-size:13px;}
+  .panelbox{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:14px 16px; margin-bottom:14px;}
+  table{width:100%; border-collapse:collapse; font-size:12.5px; table-layout:fixed;}
+  td,th{padding:6px 8px; border-top:1px solid var(--border); vertical-align:top; word-break:break-word; overflow-wrap:anywhere; text-align:left;}
+  th{color:var(--muted); font-weight:600; font-size:12px;}
+  td.k{color:var(--e); font-weight:600; width:20%;}
+  .fbtn{background:var(--card); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:6px 12px; font-size:12.5px; cursor:pointer;}
+  .fbtn:hover{border-color:var(--a);}
+  .fbtn.on{border-color:var(--a); box-shadow:0 0 0 1px var(--a) inset; color:var(--a);}
+  .phasebar{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; align-items:center;}
+  .phasebar .arr{color:var(--muted); font-size:13px;}
+  .stage{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:12px; margin-bottom:8px; overflow-x:auto;}
+  #flow{display:block; margin:0 auto; min-width:820px; width:100%; max-width:960px;}
+  #flow text{fill:var(--text);}
+  #flow .boxr{fill:var(--card); stroke:var(--border); rx:12;}
+  #flow .boxt{font-size:13.5px; font-weight:700;}
+  #flow .boxm{font-size:10.5px; fill:var(--muted);}
+  #flow .albl{font-size:10.8px; font-weight:600;}
+  #flow .dead .boxr{opacity:.35;}
+  #flow .dead text{opacity:.4;}
+  .ginfo{background:var(--card); border:1px dashed var(--border); border-radius:10px; padding:10px 14px; font-size:12.5px; margin-top:10px; min-height:44px;}
+  .ginfo b{color:var(--a);}
+  .legend{display:flex; gap:16px; flex-wrap:wrap; font-size:11.5px; color:var(--muted); margin-top:8px; padding:0 6px;}
+  .legend i{display:inline-block; width:22px; height:0; border-top:2.5px solid; margin-right:5px; vertical-align:middle;}
+  .runbook{display:flex; gap:0; flex-wrap:wrap; align-items:stretch;}
+  .rstep{flex:1; min-width:150px; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:9px 11px; font-size:12px; position:relative; margin-right:22px;}
+  .rstep:after{content:'▶'; position:absolute; right:-18px; top:45%; color:var(--muted); font-size:11px;}
+  .rstep:last-child{margin-right:0;} .rstep:last-child:after{content:'';}
+  .rstep b{display:block; font-size:12.5px; margin-bottom:2px;}
+  .rstep .m{color:var(--muted); font-size:11px;}
+  .rstep.hot{border-color:var(--c);}
+</style>
+</head>
+<body>
+<h1>OMS/WMS 2.0 — 배포·컷오버 전략 <span style="font-size:12px;color:var(--muted);font-weight:400">(v1 · 민철 dual-write 안 기반 · SSD-4967)</span></h1>
+<div class="sub"><a href="./index.html">스키마 v12</a> · <a href="./architecture.html">아키텍처</a> · 창고는 못 멈춘다 — 전 과정 무중단 전제</div>
+
+<div class="decision">🔑 <b>핵심 아이디어</b>: 빅뱅을 없애는 게 아니라 <b>빅뱅의 반경을 "재고 authority 스위치 하나"로 줄인다.</b> 주문·트래킹·이벤트·작업문서는 전부 점진 전환이 되지만(화면별·도메인별 플래그), <b>재고·예약만은 전역 공유 상태</b>(가용성 = 전체 재고 − 전체 예약)라 절반씩 자를 수 없다 — 자르면 어느 쪽도 가용성 계산이 안 돼 oversell. 그래서 재고만 실사날 하룻밤의 <b>되돌릴 수 있는 단일 플립</b>으로 만들고, 나머지는 전부 그 전후에 점진으로 뺀다. V1·V2가 같은 internal-api 프로세스 안이라 모든 스위치는 배포가 아니라 <b>설정 플래그</b>다.</div>
+
+<h2><i class="dot" style="background:var(--a)"></i>단계별 데이터 흐름 — 버튼을 눌러보세요</h2>
+<div class="phasebar">
+  <button class="fbtn" data-p="0">P0 · 백필+섀도 (~2주)</button><span class="arr">→</span>
+  <button class="fbtn" data-p="1">P1 · 읽기 전환 (~1주)</button><span class="arr">→</span>
+  <button class="fbtn" data-p="2">P2a · 독립 도메인 쓰기</button><span class="arr">→</span>
+  <button class="fbtn" data-p="3">P2b · 재고 플립 (하룻밤)</button><span class="arr">→</span>
+  <button class="fbtn" data-p="4">P3 · 청산</button>
+</div>
+<div class="stage">
+  <svg id="flow" viewBox="0 0 900 430"></svg>
+  <div class="legend">
+    <span><i style="border-color:var(--a)"></i>쓰기 (authority)</span>
+    <span><i style="border-color:var(--muted); border-top-style:dashed"></i>섀도 쓰기 (best-effort)</span>
+    <span><i style="border-color:var(--e)"></i>읽기</span>
+    <span><i style="border-color:var(--b); border-top-style:dashed"></i>역방향 dual-write (롤백 대비)</span>
+    <span><i style="border-color:var(--f); border-top-style:dotted"></i>백필 (1회)</span>
+    <span><i style="border-color:var(--d)"></i>드리프트 대사</span>
+  </div>
+  <div class="ginfo" id="pinfo"></div>
+</div>
+
+<h2><i class="dot" style="background:var(--e)"></i>단계 요약표 — 각 단계에서 뭐가 어디에 쓰이고 읽히나</h2>
+<div class="panelbox">
+<table>
+<tr><th style="width:14%">단계</th><th style="width:14%">재고 authority</th><th>쓰기</th><th>읽기</th><th style="width:19%">롤백 방법</th></tr>
+<tr><td class="k">P0 백필+섀도</td><td>V1</td><td>V1 (모든 쓰기) + V2 섀도(M1~M6 번역, best-effort — V2 실패가 V1을 절대 안 막음) + 과거분 백필 1회</td><td>전부 V1</td><td>섀도만 끄면 끝 — 리스크 0</td></tr>
+<tr><td class="k">P1 읽기 전환</td><td>V1</td><td>P0과 동일</td><td>RTO 목록·주문 상세·재고 현황부터 <b>화면별 플래그</b>로 V2 읽기 — 틀리면 사고가 아니라 발견</td><td>화면 플래그 원복 (즉시)</td></tr>
+<tr><td class="k">P2a 독립 도메인</td><td>V1</td><td>event·tracking 웹훅·ops_doc(마감/실사)는 <b>V2 직접</b> — append-only·신기능이라 전역 불변식 없음. 주문·재고는 여전히 V1+섀도</td><td>대부분 V2</td><td>도메인별 플래그 원복</td></tr>
+<tr><td class="k" style="color:var(--c)">P2b 재고 플립</td><td><b>V2 ★</b></td><td><b>전부 V2</b> + <b>역방향 dual-write(V2→V1) 2주</b> — 이게 있어야 데이터 유실 없이 되돌아감</td><td>전부 V2</td><td>플래그 원복 → V1이 계속 동기 상태라 즉시 복귀</td></tr>
+<tr><td class="k">P3 청산</td><td>V2</td><td>V2만 — dual-write 전부 제거</td><td>V2만</td><td>없음 (여기부터 V1은 읽기전용 보관 → DDB·BQ 폐기)</td></tr>
+</table>
+</div>
+
+<h2><i class="dot" style="background:var(--c)"></i>P2b 재고 플립 — 실사날 밤 런북</h2>
+<div class="panelbox">
+<div class="runbook">
+  <div class="rstep"><b>1. 출고 동결</b><div class="m">마감 후 야간 — 창고 작업 없는 시간대. 주문 유입은 계속(예약은 V1이 처리 중)</div></div>
+  <div class="rstep"><b>2. 실사 (実査)</b><div class="m">물리 카운트 — 이게 V2 원장의 기초잔고가 된다. "장부 이관"이 아니라 "실물 기준 재출발"</div></div>
+  <div class="rstep"><b>3. 기초잔고 시드</b><div class="m">실사 결과 → stock_movement 개시 행 + 활성 예약 V1→V2 변환(검증 리포트 통과 필수)</div></div>
+  <div class="rstep hot"><b>4. 플립</b><div class="m">재고 authority 플래그 V1→V2. 배포 아님 — 설정 스위치 한 번</div></div>
+  <div class="rstep"><b>5. 검증 출고</b><div class="m">아침 첫 배치를 소량으로 — 원장·예약·라벨·WC push 전 구간 확인</div></div>
+  <div class="rstep"><b>6. 관찰 2주</b><div class="m">역방향 dual-write 유지 — 문제 시 플래그 원복으로 즉시 롤백. 2주 green이면 P3</div></div>
+</div>
+</div>
+
+<h2><i class="dot" style="background:var(--d)"></i>Green 기준 — "fine해 보이면"을 수치로</h2>
+<div class="panelbox">
+<table>
+<tr><th style="width:34%">일일 드리프트 체크 (자동 리포트)</th><th>비교 내용</th></tr>
+<tr><td class="k">재고 총량 불변식</td><td>SKU별 Σ stock_balance.on_hand = V1 StockItem.totalQuantity</td></tr>
+<tr><td class="k">예약 불변식</td><td>SKU별 Σ 활성 reservation.qty = V1 totalReservedQuantity</td></tr>
+<tr><td class="k">주문 상태 일치</td><td>활성 주문 전수: V1 status ↔ V2 rollup_status/line_status 매핑표 일치율 100%</td></tr>
+<tr><td class="k">RTO 집합 일치</td><td>양쪽에서 Ready-to-Outbound 목록을 뽑아 집합 비교 — 최고의 end-to-end 체크(예약·입고·rollup이 전부 맞아야 통과)</td></tr>
+<tr><td class="k">게이트 규칙</td><td><b>드리프트 0건 연속 7일 → 다음 단계 GO.</b> 1건이라도 발생 → 원인 규명 전까지 해당 단계 홀드 (기간은 늘어나도 단계는 안 건너뜀)</td></tr>
+</table>
+</div>
+
+<div class="sub" style="margin-top:24px">마이그레이션 변환 규칙(M1~M6: 수량 재계산 금지·멱등키 시드·MKT- 해체·상태 매핑표·긱 금액 보존·이력 re-wire)은 <a href="./index.html">스키마 페이지</a> 행동 규칙 계약 참조 — 섀도 라이터가 곧 마이그레이션 도구라서, 컷오버 전에 이 규칙들이 프로덕션에서 몇 주간 실전 검증된다.</div>
+
+<script>
+const NS='http://www.w3.org/2000/svg';
+const svg=document.getElementById('flow');
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);(parent||svg).appendChild(e);return e;}
+// 마커 (색상별)
+const defs=el('defs',{});
+[['ma','var(--a)'],['mm','var(--muted)'],['me','var(--e)'],['mb','var(--b)'],['mf','var(--f)'],['md','var(--d)']].forEach(([id,c])=>{
+  const m=el('marker',{id,viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:7,markerHeight:7,orient:'auto-start-reverse'},defs);
+  el('path',{d:'M0,0 L10,5 L0,10 z',fill:c},m);
+});
+// 박스
+const BOXES={
+ app:{x:300,y:18,w:300,h:64,t:'internal-api (domain/wms2 + V1 핸들러)',m:'창고 스캔 · 어드민 · 웹훅이 전부 여기로'},
+ v1:{x:50,y:170,w:230,h:86,t:'V1 — DynamoDB',m:''},
+ v2:{x:620,y:170,w:230,h:86,t:'V2 — Spanner (9테이블)',m:''},
+ drift:{x:330,y:330,w:240,h:62,t:'일일 드리프트 리포트',m:'불변식 4종 비교 · 0건 연속 7일 = GO'},
+};
+const boxG={};
+for(const k in BOXES){const b=BOXES[k];const g=el('g',{class:'bx',id:'bx-'+k});
+ el('rect',{class:'boxr',x:b.x,y:b.y,width:b.w,height:b.h,rx:12},g);
+ const t1=el('text',{class:'boxt','text-anchor':'middle',x:b.x+b.w/2,y:b.y+26},g);t1.textContent=b.t;
+ const t2=el('text',{class:'boxm','text-anchor':'middle',x:b.x+b.w/2,y:b.y+46},g);
+ boxG[k]={g,sub:t2};}
+const dyn=el('g',{id:'dyn'});
+function arrow(x1,y1,x2,y2,color,marker,dash,label,lx,ly,bend){
+  const mx=(x1+x2)/2,my=(y1+y2)/2;
+  const d=bend?`M${x1},${y1} Q${mx},${my+bend} ${x2},${y2}`:`M${x1},${y1} L${x2},${y2}`;
+  const p=el('path',{d,fill:'none',stroke:color,'stroke-width':2.4,'marker-end':`url(#${marker})`},dyn);
+  if(dash)p.setAttribute('stroke-dasharray',dash);
+  if(label){const t=el('text',{class:'albl','text-anchor':'middle',x:lx??mx,y:ly??my-8,fill:color},dyn);t.textContent=label;}
+}
+// 좌표 도우미
+const A={x:450,b:82}, V1={cx:165,t:170,r:280,b:256}, V2={cx:735,t:170,l:620,b:256}, D={l:330,r:570,t:330};
+const PHASES=[
+ {btn:0,v1sub:'authority (진실)',v2sub:'섀도 (검증 중)',v1dead:0,v2dead:0,
+  draw(){
+   arrow(390,A.b,V1.cx+40,V1.t,'var(--a)','ma',null,'모든 쓰기',255,118);
+   arrow(510,A.b,V2.cx-40,V2.t,'var(--muted)','mm','6 5','섀도 쓰기 — M1~M6 번역 · best-effort',648,118);
+   arrow(V1.r,196,V2.l,196,'var(--f)','mf','2 5','백필 (1회 · 과거분)',450,188);
+   arrow(V1.cx+30,V1.b,D.l,352,'var(--d)','md',null,'',0,0);
+   arrow(V2.cx-30,V2.b,D.r,352,'var(--d)','md',null,'대사',612,308);
+   arrow(V1.cx-40,V1.t,370,A.b,'var(--e)','me',null,'읽기 전부 V1',180,140);
+  },
+  d:'<b>P0 · 백필 + 섀도 이중기록 (~2주)</b> — V1이 쓸 때마다 V2에도 <b>번역해서</b> 쓴다(같은 걸 두 번이 아니라 M1~M6 매핑 적용 = 섀도 라이터가 곧 마이그레이션 도구 → 매핑 코드가 프로덕션에서 실전 검증됨). V2 쓰기 실패는 V1을 절대 막지 않고, 유실분은 일일 대사가 줍는다. 게이트: 드리프트 0건 연속 7일.'},
+ {btn:1,v1sub:'authority (진실)',v2sub:'읽기 검증 중',v1dead:0,v2dead:0,
+  draw(){
+   arrow(390,A.b,V1.cx+40,V1.t,'var(--a)','ma',null,'모든 쓰기',255,118);
+   arrow(510,A.b,V2.cx-40,V2.t,'var(--muted)','mm','6 5','섀도 쓰기 계속',630,118);
+   arrow(V2.cx+10,V2.t,530,A.b,'var(--e)','me',null,'RTO·상세·재고현황 읽기 (화면별 플래그)',660,148);
+   arrow(V1.cx-40,V1.t,370,A.b,'var(--e)','me','2 4','나머지 읽기',180,140);
+   arrow(V1.cx+30,V1.b,D.l,352,'var(--d)','md',null,'',0,0);
+   arrow(V2.cx-30,V2.b,D.r,352,'var(--d)','md',null,'대사',612,308);
+  },
+  d:'<b>P1 · 읽기 전환 — 화면 단위 (~1주)</b> — 쓰기 authority는 여전히 V1이라 <b>V2가 틀려도 사고가 아니라 발견</b>이다. RTO 목록·주문 상세·재고 현황부터 화면별 플래그로 V2 읽기(V1 실측 ~50초였던 RTO가 여기서 처음 인덱스 1히트로 열림). 롤백 = 플래그 원복, 즉시.'},
+ {btn:2,v1sub:'주문·재고 authority',v2sub:'신규 도메인 authority',v1dead:0,v2dead:0,
+  draw(){
+   arrow(390,A.b,V1.cx+40,V1.t,'var(--a)','ma',null,'주문·재고 쓰기 (아직 V1)',235,118);
+   arrow(510,A.b,V2.cx-40,V2.t,'var(--a)','ma',null,'event·tracking·ops_doc 직접 쓰기',680,110);
+   arrow(530,A.b-40,V2.l,V2.t+10,'var(--muted)','mm','6 5','주문·재고 섀도',575,150);
+   arrow(V2.cx+10,V2.t,530,A.b,'var(--e)','me',null,'읽기 대부분 V2',700,152);
+   arrow(V1.cx+30,V1.b,D.l,352,'var(--d)','md',null,'',0,0);
+   arrow(V2.cx-30,V2.b,D.r,352,'var(--d)','md',null,'대사',612,308);
+  },
+  d:'<b>P2a · 독립 도메인 쓰기 전환</b> — 전역 불변식이 없는 것부터 V2 직접 쓰기로: event 로그·캐리어 웹훅(tracking_number)·ops_doc(마감/실사 — 사실상 신기능). 도메인별 플래그라 하나씩 켜고 하나씩 되돌릴 수 있다. 주문·재고는 여전히 V1+섀도.'},
+ {btn:3,v1sub:'섀도 (롤백 대비 동기 유지)',v2sub:'★ authority (진실)',v1dead:0,v2dead:0,
+  draw(){
+   arrow(510,A.b,V2.cx-40,V2.t,'var(--a)','ma',null,'모든 쓰기',648,118);
+   arrow(V2.l,230,V1.r,230,'var(--b)','mb','7 5','역방향 dual-write — 롤백 창 2주',450,222);
+   arrow(V2.cx+10,V2.t,530,A.b,'var(--e)','me',null,'모든 읽기',700,152);
+   arrow(V1.cx+30,V1.b,D.l,352,'var(--d)','md',null,'',0,0);
+   arrow(V2.cx-30,V2.b,D.r,352,'var(--d)','md',null,'대사 계속',618,308);
+  },
+  d:'<b>P2b · 재고 authority 플립 (실사날 하룻밤)</b> — 유일한 원자적 스위치. 실사로 V2 원장 기초잔고를 만들고 플래그를 플립. 이후 2주간 <b>역방향 dual-write(V2→V1)</b>를 유지해서, 문제가 터지면 플래그 원복만으로 <b>데이터 유실 없이</b> V1으로 복귀할 수 있다. 아래 런북 참조.'},
+ {btn:4,v1sub:'폐기 — DDB·BQ 리드모델 제거',v2sub:'단독 운영',v1dead:1,v2dead:0,
+  draw(){
+   arrow(510,A.b,V2.cx-40,V2.t,'var(--a)','ma',null,'모든 쓰기',648,118);
+   arrow(V2.cx+10,V2.t,530,A.b,'var(--e)','me',null,'모든 읽기',700,152);
+  },
+  d:'<b>P3 · 청산</b> — 역방향 dual-write 2주 green이면 전부 제거. V1 DDB는 읽기전용 보관 후 폐기, BigQuery 리드모델도 폐기(BI는 Spanner 직접 + 월 배치 export). 여기서부터 유지할 시스템은 하나뿐이다.'},
+];
+const pinfo=document.getElementById('pinfo');
+let cur=0;
+function render(){
+  dyn.innerHTML='';
+  const ph=PHASES[cur];
+  document.querySelectorAll('.fbtn[data-p]').forEach(b=>b.classList.toggle('on',+b.dataset.p===cur));
+  boxG.v1.sub.textContent=ph.v1sub; boxG.v2.sub.textContent=ph.v2sub;
+  boxG.v1.g.classList.toggle('dead',!!ph.v1dead);
+  ph.draw();
+  pinfo.innerHTML=ph.d;
+}
+document.querySelectorAll('.fbtn[data-p]').forEach(b=>b.addEventListener('click',()=>{cur=+b.dataset.p;render();}));
+render();
+</script>
+</body>
+</html>
