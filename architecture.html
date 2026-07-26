@@ -269,7 +269,7 @@ const FLOWS = {
  outbound:{seq:['ScanController','OutboundOrders','Reservation','StockLedger','Rollup','LabelRender','WcSync','Repos'],d:'<b>출고</b> — 아래 시퀀스 다이어그램의 경로. 예약 consume(R2) + 원장 OUTBOUND + rollup을 한 txn으로 커밋 후, 라벨 렌더와 WC push는 밖에서 비동기.'},
  merge:{seq:['OrderController','MergeOrders','Rollup','Repos'],d:'<b>머지</b> — 라인 re-parent(order_id UPDATE)만으로 예약·원장 자동 추종. 원본 주문은 0라인 → rollup이 MERGED 판정(R10). V1 유령 예약 버그의 해소 경로.'},
  ops:{seq:['OpsDocController','ConfirmClosing','ConfirmAudit','StockLedger','Repos'],d:'<b>마감·실사</b> — 마감: 박스 재스캔 → ops_doc_line UNIQUE로 중복 차단 → 확정. 실사: 차이 확정분만 StockLedgerService.auditAdjust로 원장 반영.'},
- sweep:{seq:['WcSweep','WcSync','Ext','Reservation','Repos'],d:'<b>스위퍼</b> — 시간당 CronJob: WC와 WMS 상태 대사 → 유실 push 재전송(자가 치유) + wc_status 캐시 기록 + WC refunded 감지 시 라인 CANCELLED·예약 RELEASED(REFUNDED). Queue가 필요 없는 이유가 이 안전망.'},
+ sweep:{seq:['WcSweep','WcSync','Ext','Reservation','Repos'],d:'<b>스위퍼</b> — SkinSeoulBatch(GCP Batch)가 시간당 트리거: WC와 WMS 상태 대사 → 유실 push 재전송(자가 치유) + wc_status 캐시 기록 + WC refunded 감지 시 라인 CANCELLED·예약 RELEASED(REFUNDED). Queue가 필요 없는 이유가 이 안전망.'},
 };
 const graph = document.getElementById('graph');
 const edgesSvg = document.getElementById('edges');
