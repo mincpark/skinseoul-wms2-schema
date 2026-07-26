@@ -61,6 +61,14 @@
   .rstep b{display:block; font-size:12.5px; margin-bottom:2px;}
   .rstep .m{color:var(--muted); font-size:11px;}
   .rstep.hot{border-color:var(--c);}
+  .grp{display:inline-block; font-size:9.5px; font-weight:700; border-radius:4px; padding:0 6px; margin-left:6px; vertical-align:middle;}
+  .grp.a{background:rgba(152,195,121,.18); color:var(--e);}
+  .grp.b{background:rgba(224,179,77,.18); color:var(--b);}
+  .grp.c{background:rgba(224,108,117,.18); color:var(--c);}
+  .gcards{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;}
+  .gcard{flex:1; min-width:280px; background:var(--card); border:1px solid var(--border); border-top:3px solid var(--gc); border-radius:12px; padding:11px 13px; font-size:12.3px;}
+  .gcard b.gt{display:block; font-size:13px; margin-bottom:4px; color:var(--gc);}
+  .gcard .m{color:var(--muted); font-size:11.5px;}
 </style>
 </head>
 <body>
@@ -75,6 +83,27 @@
 <tr><th style="width:19%"></th><th class="step" style="width:27%">① 섀도<br><span style="font-size:10.5px;color:var(--muted);font-weight:400">V2 그림자 기록 · 오류 관찰</span></th><th class="step" style="width:27%">② 읽기 primary = V2<br><span style="font-size:10.5px;color:var(--muted);font-weight:400">V1 자동 폴백</span></th><th class="step" style="width:27%">③ 쓰기 primary = V2<br><span style="font-size:10.5px;color:var(--muted);font-weight:400">완전 이관</span></th></tr>
 </table>
 <div class="ginfo" id="mxinfo"><b>사용법</b> — 칸을 클릭하면 그 도메인·단계에서 정확히 뭘 하는지, 전진 조건과 롤백 방법이 나옵니다. 도메인은 위(저위험)부터 아래(코어) 순으로 착수 — 단, 각 행은 독립이라 앞 행이 ③까지 가길 기다릴 필요 없음.</div>
+</div>
+
+<h2><i class="dot" style="background:var(--e)"></i>도메인 그룹핑 — 뭘 따로 가고, 뭘 묶어야 하나</h2>
+<div class="gcards">
+  <div class="gcard" style="--gc:var(--e)"><b class="gt">그룹 A · 완전 독립 — 이벤트 · 트래킹</b>
+  다른 도메인과 공유하는 불변식 없음 → <b>순서 자유, 병렬 가능</b>, 각자 사다리를 오른다.<div class="m">이벤트를 첫 타자로 — 섀도 파이프라인(번역·멱등키·대사)의 데뷔 무대를 가장 안전한 곳에서.</div></div>
+  <div class="gcard" style="--gc:var(--b)"><b class="gt">그룹 B · 준독립 — 작업 문서</b>
+  ③ 직행(그린필드)은 그대로. <b>선행조건 2개</b>: ① 트래킹 ①이 먼저 켜져 있을 것(마감의 close_doc_id가 참조할 V2 트래킹 행 필요 — ③까지는 불요) ② 실사 확정의 재고 반영은 <b>재고 authority 플래그를 따라감</b>(재고 ③ 전=V1 반영+섀도, 후=V2 직접).<div class="m">문서(ops_doc)는 V2, 부수효과만 플래그를 따르는 구조.</div></div>
+  <div class="gcard" style="--gc:var(--c)"><b class="gt">그룹 C · 커플드 코어 — 주문 + 재고·예약</b>
+  <b>①·②는 각자 독립 진행 OK.</b> <b>③만 같은 창(window)으로 묶는다</b> — 예약이 주문 라인을 참조하고 rollup이 재고 이벤트로 움직여서, 쓰기 authority가 오래 갈라지면 크로스 도메인 참조가 dual-write 브리지에 상시 의존하게 됨(브리지=롤백용 안전핀이지 운영 구조가 아님).<div class="m">실행: 실사날 밤 재고 ③ → 1주 관찰 → 주문 ③. 브리지 규칙 1개 명문화: 그 1주간 주문 라인의 V2 섀도는 <b>예약 호출 직전에만 동기(sync) 보장</b>(평소 섀도는 best-effort).</div></div>
+</div>
+<div class="panelbox">
+<div style="font-size:12px;color:var(--muted);margin-bottom:8px"><b style="color:var(--text)">전체 권장 타임라인</b> — 앞 그룹이 ③까지 끝나길 기다릴 필요 없이 겹쳐 진행 가능. 규칙: 동시에 전진 중인 칸이 여러 개여도 되지만, <b>같은 행(도메인)에서는 한 칸씩</b>.</div>
+<div class="runbook">
+  <div class="rstep"><b>1. 이벤트</b><div class="m">①→②→③ — 섀도 파이프라인 데뷔</div></div>
+  <div class="rstep"><b>2. 트래킹</b><div class="m">①→②→③ (①만 켜지면 작업문서 착수 가능)</div></div>
+  <div class="rstep"><b>3. 작업 문서</b><div class="m">③ 직행 — 마감·실사·입고요청</div></div>
+  <div class="rstep"><b>4. 주문·재고 ①②</b><div class="m">두 도메인 병렬 — 섀도·읽기 primary까지</div></div>
+  <div class="rstep hot"><b>5. 코어 창</b><div class="m">재고 ③(실사날) → 1주 관찰 → 주문 ③</div></div>
+  <div class="rstep"><b>6. 청산</b><div class="m">역방향 제거 → DDB·BQ 폐기</div></div>
+</div>
 </div>
 
 <h2><i class="dot" style="background:var(--f)"></i>단계별 데이터 흐름 — 한 도메인이 사다리를 오를 때</h2>
@@ -126,23 +155,23 @@
 <script>
 // ── 매트릭스 ──────────────────────────────
 const DOMS=[
- {id:'ev',t:'이벤트·감사',m:'event — 첫 타자(저위험)',cells:[
+ {id:'ev',t:'이벤트·감사',grp:'a',gl:'A 독립',m:'event — 첫 타자(저위험)',cells:[
   {b:'V1 감사로그 + V2 event 병행 기록',m:'append-only라 충돌 없음'},
   {b:'감사 이력 화면 V2 primary',m:'V2 조회 실패·공백 시 V1 이력 폴백'},
   {b:'V2만 기록',m:'V1 감사 기록 중단'}]},
- {id:'tr',t:'트래킹',m:'tracking_number + 캐리어 웹훅',cells:[
+ {id:'tr',t:'트래킹',grp:'a',gl:'A 독립',m:'tracking_number + 캐리어 웹훅',cells:[
   {b:'웹훅 V1+V2 이중 기록',m:'events jsonb 누적 검증'},
   {b:'스캔 리졸버·추적 조회 V2 primary',m:'만능 인덱스 1히트, 미스 시 V1 월별 GSI 폴백'},
   {b:'웹훅 V2만 기록',m:'V1 트래킹 필드 갱신 중단'}]},
- {id:'ops',t:'작업 문서',m:'ops_doc — 마감·실사·입고요청',cells:[
+ {id:'ops',t:'작업 문서',grp:'b',gl:'B 준독립',m:'ops_doc — 마감·실사·입고요청',cells:[
   {b:'(건너뜀)',m:'사실상 신기능 — V1에 대응물 없음',skip:1},
   {b:'(건너뜀)',m:'〃',skip:1},
   {b:'처음부터 V2 직접',m:'그린필드 — 도메인 중 유일하게 ③부터 시작'}]},
- {id:'ord',t:'주문',m:'fulfillment_order/line + WC 동기화',cells:[
+ {id:'ord',t:'주문',grp:'c',gl:'C 코어',m:'fulfillment_order/line + WC 동기화',cells:[
   {b:'주문 쓰기 섀도(M1~M6 번역)',m:'생성·상태·머지 전부 그림자 기록'},
   {b:'주문 목록·상세·RTO V2 primary',m:'V1 폴백 — V1 실측 ~50초 RTO가 여기서 인덱스 1히트로'},
   {b:'주문 쓰기 V2 primary',m:'WC 스위퍼도 V2 기준으로 전환. 예약 호출은 재고 authority를 따라감(재고 ③ 이전/이후 모두 가능)'}]},
- {id:'stk',t:'재고·예약',m:'movement·balance·reservation — 코어(마지막)',cells:[
+ {id:'stk',t:'재고·예약',grp:'c',gl:'C 코어',m:'movement·balance·reservation — 코어(마지막)',cells:[
   {b:'재고 쓰기 섀도',m:'원장·밸런스·예약 그림자 + 불변식 대사'},
   {b:'재고 현황·가용성 조회 V2 primary',m:'V1 카운터 폴백'},
   {b:'★ 실사날 플립 + 역방향 dual-write 2주',m:'유일한 원자 칸 — 아래 런북',hot:1}]},
@@ -166,7 +195,7 @@ const mx=document.getElementById('mx'), mxinfo=document.getElementById('mxinfo')
 const MXDEF=mxinfo.innerHTML;
 DOMS.forEach(d=>{
   const tr=document.createElement('tr');
-  const td0=document.createElement('td'); td0.className='dom'; td0.innerHTML=`${d.t}<div class="m">${d.m}</div>`; tr.appendChild(td0);
+  const td0=document.createElement('td'); td0.className='dom'; td0.innerHTML=`${d.t}<span class="grp ${d.grp}">${d.gl}</span><div class="m">${d.m}</div>`; tr.appendChild(td0);
   d.cells.forEach((c,si)=>{
     const td=document.createElement('td');
     if(c.skip)td.classList.add('skip'); if(c.hot)td.classList.add('hot');
