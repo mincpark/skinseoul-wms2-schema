@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fulfillment 2.0 스펙 핸드오프 — 정밀 감사</title>
+<style>
+:root{
+  --bg:#f7f4ee; --surface:#fffdf9; --sunk:#f0ece3; --border:#ddd5c7;
+  --text:#1e1b16; --dim:#6d6558;
+  --ink:#1f4e79; --clay:#b0512b; --sage:#5b7a58; --gold:#a37a1f; --slate:#4a5568;
+  --shadow:0 1px 2px rgba(30,27,22,.06), 0 8px 24px -12px rgba(30,27,22,.18);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#16150f; --surface:#1e1c16; --sunk:#131208; --border:#33302a;
+    --text:#eee9df; --dim:#9b9384;
+    --ink:#7fb2e0; --clay:#e08a5f; --sage:#93b98e; --gold:#d9b35c; --slate:#9aa8ba;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f7f4ee; --surface:#fffdf9; --sunk:#f0ece3; --border:#ddd5c7;
+  --text:#1e1b16; --dim:#6d6558;
+  --ink:#1f4e79; --clay:#b0512b; --sage:#5b7a58; --gold:#a37a1f; --slate:#4a5568;
+}
+:root[data-theme="dark"]{
+  --bg:#16150f; --surface:#1e1c16; --sunk:#131208; --border:#33302a;
+  --text:#eee9df; --dim:#9b9384;
+  --ink:#7fb2e0; --clay:#e08a5f; --sage:#93b98e; --gold:#d9b35c; --slate:#9aa8ba;
+}
+*{box-sizing:border-box;min-width:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
+  font-size:16px; line-height:1.72; letter-spacing:-.01em; overflow-wrap:break-word;
+}
+code,.mono{font-family:"SF Mono","JetBrains Mono","IBM Plex Mono",ui-monospace,monospace;font-size:.87em}
+code{background:var(--sunk);border:1px solid var(--border);border-radius:4px;padding:.05em .35em}
+.wrap{max-width:980px;margin:0 auto;padding:0 22px 90px}
+
+header.hero{border-bottom:1px solid var(--border);background:var(--surface);margin-bottom:40px}
+.hero-in{max-width:980px;margin:0 auto;padding:50px 22px 34px}
+.kicker{font-size:.75rem;letter-spacing:.16em;text-transform:uppercase;color:var(--clay);font-weight:700;margin:0 0 12px}
+h1{font-size:clamp(1.7rem,4.2vw,2.4rem);line-height:1.24;margin:0 0 14px;letter-spacing:-.03em;font-weight:700}
+.lede{font-size:1.04rem;color:var(--dim);margin:0;max-width:64ch}
+.stats{display:flex;flex-wrap:wrap;gap:24px 36px;margin-top:28px;padding-top:22px;border-top:1px dashed var(--border)}
+.stat b{display:block;font-family:"SF Mono","JetBrains Mono",ui-monospace,monospace;font-size:1.4rem;line-height:1.1;color:var(--ink);letter-spacing:-.02em}
+.stat span{font-size:.79rem;color:var(--dim)}
+
+.verdict{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--clay);
+  border-radius:3px;padding:20px 24px;box-shadow:var(--shadow);margin:0 0 20px}
+.verdict.calm{border-left-color:var(--sage)}
+.verdict p{margin:0}
+.verdict p+p{margin-top:10px}
+
+section{margin:0 0 50px}
+.sec-head{display:flex;align-items:baseline;gap:12px;margin:0 0 6px;padding-bottom:10px;border-bottom:2px solid var(--text)}
+.sec-num{font-family:"SF Mono",ui-monospace,monospace;font-size:.8rem;color:var(--clay);font-weight:700}
+h2{font-size:1.28rem;margin:0;letter-spacing:-.02em;font-weight:700}
+h3.sub{font-size:1rem;margin:30px 0 12px;letter-spacing:-.015em;color:var(--ink)}
+.sec-sub{color:var(--dim);font-size:.92rem;margin:10px 0 20px}
+
+.items{display:grid;gap:13px}
+.item{background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:15px 18px;box-shadow:var(--shadow)}
+.item.flat{box-shadow:none;background:var(--sunk)}
+.item h4{margin:0 0 6px;font-size:.98rem;font-weight:700;letter-spacing:-.015em;display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
+.item p{margin:0;color:var(--dim);font-size:.93rem}
+.item p+p{margin-top:8px}
+.item .why{color:var(--text)}
+.tag{font-family:"SF Mono",ui-monospace,monospace;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;
+  padding:2px 7px;border-radius:2px;border:1px solid currentColor;font-weight:600;white-space:nowrap}
+.t-block{color:var(--clay)} .t-doc{color:var(--gold)} .t-conflict{color:var(--slate)}
+.t-build{color:var(--ink)} .t-none{color:var(--dim)} .t-ok{color:var(--sage)}
+.quote{border-left:2px solid var(--border);padding-left:12px;margin-top:9px;font-size:.89rem;color:var(--dim);font-style:italic}
+.filelist{margin-top:9px;font-family:"SF Mono",ui-monospace,monospace;font-size:.79rem;color:var(--dim);
+  background:var(--sunk);border:1px solid var(--border);border-radius:3px;padding:9px 11px;overflow-x:auto;white-space:pre;line-height:1.6}
+
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:3px;background:var(--surface);box-shadow:var(--shadow);margin-top:14px}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:.9rem}
+th,td{text-align:left;padding:10px 13px;border-bottom:1px solid var(--border);vertical-align:top}
+th{background:var(--sunk);font-size:.73rem;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:700;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.who{white-space:nowrap;font-weight:600}
+td.mono-cell{font-family:"SF Mono",ui-monospace,monospace;font-size:.83rem}
+
+ol.steps{list-style:none;counter-reset:s;padding:0;margin:0;display:grid;gap:12px}
+ol.steps li{counter-increment:s;position:relative;padding:14px 18px 14px 52px;background:var(--surface);
+  border:1px solid var(--border);border-radius:3px}
+ol.steps li::before{content:counter(s);position:absolute;left:16px;top:13px;
+  font-family:"SF Mono",ui-monospace,monospace;font-size:.9rem;font-weight:700;color:var(--clay)}
+ol.steps b{display:block;margin-bottom:3px}
+ol.steps span{color:var(--dim);font-size:.91rem;display:block}
+ol.steps .dep{margin-top:6px;font-size:.84rem;color:var(--clay)}
+
+footer{margin-top:52px;padding-top:20px;border-top:1px solid var(--border);color:var(--dim);font-size:.83rem}
+@media (max-width:560px){ .stats{gap:16px 24px} }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-in">
+    <p class="kicker">Fulfillment 2.0 · 정밀 감사 (2차) · 2026-08-04</p>
+    <p style="margin:0 0 18px;font-size:.87rem;color:var(--dim)">
+      <a href="./index.html" style="color:var(--ink)">스키마 v12</a> ·
+      <a href="./architecture.html" style="color:var(--ink)">아키텍처</a> ·
+      <a href="./cutover.html" style="color:var(--ink)">컷오버</a>
+      &nbsp;—&nbsp; <b style="color:var(--clay)">이 페이지는 확정 플랜 문서가 아닙니다.</b>
+      위 세 문서가 PLAN LOCKED이고, 이건 그 플랜과 Yongwon 스펙·현재 코드 사이의 갭을 기록한 감사 결과입니다.
+    </p>
+    <h1>스펙 · 우리 코드 · 와이어프레임<br>세 축을 전부 맞춰봤습니다</h1>
+    <p class="lede">1차 때는 스펙이 스스로 "여기 비었다"고 선언한 것만 모았습니다. 이번엔 화면 스펙 8개의 본문(§3 기능 · §4 룰 · §5 데이터 캡처 · §7 엣지)을 전부 읽고, Spanner 스키마 v12와 facade 핸들러에 하나씩 맞춰보고, 와이어프레임 9개를 실제로 띄워 대조했습니다.</p>
+    <div class="stats">
+      <div class="stat"><b>258</b><span>DC 이벤트 전수 분류</span></div>
+      <div class="stat"><b>63</b><span>저장할 곳이 없는 것</span></div>
+      <div class="stat"><b>13</b><span>필요한 신규 테이블</span></div>
+      <div class="stat"><b>9/9</b><span>와이어프레임 실측</span></div>
+      <div class="stat"><b>3</b><span>발견된 라이브 버그</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="verdict">
+    <p><b>결론부터.</b> <b>스키마 v12는 그대로 못 갑니다.</b> 신규 테이블 13개, 기존 테이블 컬럼·인덱스 변경 10건이 필요합니다. 코멘트·미인식 풀·샘플 기간·프린트 잡·알림 큐가 전부 저장할 자리가 없습니다.</p>
+    <p>그리고 감사 과정에서 <b>스펙과 무관한 라이브 버그 세 개</b>가 나왔습니다. 지금 도는 코드 문제입니다.</p>
+  </div>
+
+  <div class="verdict calm">
+    <p><b>먼저 정정.</b> 1차 리포트에서 "판정이 필요한 화면 충돌 5건"이라고 드렸는데, 그중 <b>둘은 이미 해결돼 있었습니다.</b> 라인 출고 상태(CP-2)와 취소를 상태로 쓰는 문제(CP-5) 둘 다 8/3에 정리됐고, <code>view-orders.md</code> §9.5의 충돌 목록만 그걸 모르고 있습니다. 판정 대상에서 빼시면 됩니다. DC 이벤트 개수도 267이 아니라 <b>258</b>이 맞습니다.</p>
+  </div>
+
+  <!-- 1 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">01</span><h2>스키마 — v12 bump가 필요합니다</h2></div>
+    <p class="sec-sub">258개 이벤트를 하나씩 분류했습니다. 그대로 저장 가능 66 · <code>event.payload</code> JSON에만 가능 127 · <b>집이 아예 없음 63</b> · 스키마와 정면 충돌 6.</p>
+
+    <h3 class="sub">신규 테이블이 필요한 것</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>필요한 것</th><th>왜 지금 안 되나</th></tr></thead>
+        <tbody>
+          <tr><td class="mono-cell">comment</td><td>코멘트가 <code>fulfillment_order.comments</code> JSON 배열이라 <b>comment_id가 없습니다.</b> 별표·읽음·멘션·검색이 가리킬 키가 없고, 주문에만 붙어서 입고요청·미인식 풀엔 못 답니다. 우리 핸들러 주석이 직접 인정합니다 — "there is no cross-order search"</td></tr>
+          <tr><td class="mono-cell">comment_user_state</td><td><b>사용자별 상태 테이블이 스키마 전체에 하나도 없습니다.</b> <code>event.actor</code>는 "누가 했나"지 "이 사람이 읽었나"가 아닙니다. 이 하나로 DC 17개가 막힙니다</td></tr>
+          <tr><td class="mono-cell">unrecognized_pool_item</td><td>미인식 풀이 엔티티가 아니라 <code>event</code> 행입니다. 운송장·수량·상품명·메모·등록자·제거사유 컬럼이 없고 <code>ref_id</code>에 바코드만 들어갑니다</td></tr>
+          <tr><td class="mono-cell">closing_snapshot</td><td>재확정마다 새 불변 스냅샷을 써야 하는데 지금은 <code>meta.snapshot</code> 한 칸을 덮어씁니다. v{n}이 물리적으로 파괴됩니다</td></tr>
+          <tr><td class="mono-cell">sample_assignment_period<br>sample_order_assignment</td><td>샘플 배정 기간 엔티티가 없습니다. 룰 파일 + <code>is_sample</code> 불리언뿐이라 "주문당 정확히 한 세트"를 잠글 제약도, <code>Scheduled→Active→Ended</code> 전이도 표현 불가</td></tr>
+          <tr><td class="mono-cell">print_job</td><td>canonical <code>print.job_result</code>의 저장처가 없습니다. 유일하게 인접한 <code>tracking_number.print_idempotency_key</code>는 <b>전 코드베이스 write 0건</b></td></tr>
+          <tr><td class="mono-cell">notification_dispatch</td><td>재시도 횟수·다음 재시도 시각·dead-letter는 <b>큐 상태</b>라 append-only 이벤트로 표현이 안 됩니다</td></tr>
+          <tr><td class="mono-cell">product_barcode</td><td>이 스키마에 상품 마스터도 바코드 컬럼도 없습니다. "다른 SKU에 이미 등록된 바코드 차단"은 unique 제약이 있어야만 경합에 안전합니다</td></tr>
+          <tr><td class="mono-cell">idempotency_record</td><td>지금은 중복 요청이 PK 충돌로 <b>던지고 끝</b>이라 억제 기록이 안 남습니다. 스펙은 이걸 "더블클릭 버그가 고쳐졌다는 유일한 증거"라고 부릅니다</td></tr>
+          <tr><td class="mono-cell">import_batch<br>ops_batch / ops_batch_item</td><td>배치가 엔티티인데 행이 없습니다. 파일 해시로 기존 배치를 찾는 것도, 중단된 배치를 batch_id로 복원하는 것도 불가</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sub">기존 테이블과 정면 충돌</h3>
+    <div class="items">
+      <div class="item">
+        <h4>취소가 플래그가 아니라 상태값입니다 <span class="tag t-block">데이터 모델 버그</span></h4>
+        <p class="why">스펙은 주문 상태를 정확히 8개로 못박고 <b>"cancelled를 이 목록에 추가하지 말라"</b>고 명시합니다. 취소는 상태 위에 얹히는 플래그이고, 취소 이벤트가 <code>previous_status</code>를 기록해야 합니다.</p>
+        <p>우리는 <code>rollup_status</code>를 <code>CANCELLED</code>로 <b>덮어씁니다.</b> 이전 값이 남지 않아서, 스펙이 요구하는 "실제 상태 + 취소 마커 동시 표시"가 구조적으로 불가능합니다. <code>flags JSON</code>이 있긴 한데 INSERT 시점에만 쓰이고 UPDATE 경로가 없어서 대안이 못 됩니다.</p>
+      </div>
+
+      <div class="item">
+        <h4>재고 로케이션 — 두 방향으로 어긋납니다 <span class="tag t-block">오너 결정 대기</span></h4>
+        <p class="why"><code>stock_balance</code> PK가 <code>(sku, location_code)</code>라 <b>SKU당 여러 로케이션을 설계상 허용</b>합니다. 스펙의 1:1 규칙과 정반대고, "한 로케이션에 한 SKU" 쪽은 표현 수단조차 없습니다.</p>
+        <p><b>다만 지금 고치면 안 됩니다.</b> 그 1:1 규칙 자체가 오너 미확정이고, 스펙이 "충돌 빈도가 1:1 찬반의 근거"라고 적어놨습니다. unique 인덱스를 넣는 순간 그 근거 수집이 막힙니다.</p>
+      </div>
+
+      <div class="item">
+        <h4>재고 소싱 루트 — 답에 따라 스키마가 셋으로 갈립니다 <span class="tag t-block">오너 결정 대기</span></h4>
+        <p class="why">한 SKU가 여러 경로로 입고되면 재고 화면에 뭘 보여줄지. 상품 마스터 고정값 / 최초 입고 / 최신 입고 / lot 단위 — 넷이 배타적이고 마지막은 <code>stock_balance</code>를 재설계해야 합니다.</p>
+        <p>스펙이 직접 <b>"이건 스키마 결정이라 데이터모델 설계 뒤로 못 미룬다"</b>고 씁니다. 다만 <code>stock_movement.sourcing_route</code> 컬럼 하나는 어느 답에도 안전한 공통 선행이라, 답을 기다리는 동안 그것만 먼저 넣어두면 재작업이 줄어듭니다.</p>
+      </div>
+
+      <div class="item flat">
+        <h4>그 외 <span class="tag t-conflict">3건</span></h4>
+        <p><code>event.kind</code>가 <code>STRING(16)</code>이라 <code>UNRECOGNIZED_ITEM</code>(17자) 같은 엔티티 이름이 안 들어갑니다. 마케팅 유니크 인덱스가 같은 캠페인·인플루언서의 2차 주문을 영구 차단합니다. <code>event</code>에 <code>actor</code>·<code>sku</code>·<code>reason_code</code> 인덱스와 컬럼이 없어서, 스펙이 <b>"쿼리 가능성은 최적화가 아니라 필수 요건"</b>이라고 못박은 감사 조회가 풀스캔입니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">02</span><h2>라이브 버그 — 스펙과 무관하게 지금 문제입니다</h2></div>
+    <p class="sec-sub">감사하다 우연히 나온 것들입니다. 스펙 논쟁이 아니라 그냥 버그입니다.</p>
+    <div class="items">
+      <div class="item">
+        <h4>존재하지 않는 선반에 재고가 쌓이고 있습니다 <span class="tag t-block">데이터 오염</span></h4>
+        <p class="why">로케이션을 모르는 재고 이동이 <code>WH#00</code>이라는 가짜 코드로 기록됩니다. <code>NOT NULL</code> 제약을 sentinel로 우회한 건데, 그 값이 <code>stock_balance</code> PK에 들어가서 <b>실제 선반처럼 조회됩니다.</b></p>
+        <div class="filelist">OutboundFulfillmentOrderHandler.ts:33   DEFAULT_OUTBOUND_LOCATION = 'WH#00'
+V1StockShadowTranslator.ts:15         DEFAULT_LOCATION = 'WH#00'</div>
+      </div>
+      <div class="item">
+        <h4>마감 스캔이 유실될 수 있습니다 <span class="tag t-block">데이터 유실</span></h4>
+        <p class="why">마감 스캔의 멱등키가 밀리초 해상도입니다. <b>같은 밀리초에 들어온 두 스캔 중 하나가 정상 스캔인데도 PK 충돌로 사라집니다.</b> 마감은 실물 소포와 시스템을 맞추는 작업이라 스캔 하나가 없어지면 그날 마감이 안 맞습니다.</p>
+        <div class="filelist">ScanClosingWaybillHandler.ts:74   `${docId}#CLOSING_SCAN#${occurredAt.getTime()}`</div>
+      </div>
+      <div class="item">
+        <h4>더블클릭이 두 번 처리됩니다 <span class="tag t-block">멱등성</span></h4>
+        <p class="why">입고 로케이션 배정이 <code>randomUUID()</code>로 이벤트 id를 만들어서 멱등하지 않습니다. 스펙이 "현행 어드민의 더블클릭 버그를 재현하지 말라"고 콕 집은 그 패턴입니다.</p>
+        <div class="filelist">AssignInboundLocationsHandler.ts:53   `...#INBOUND_LOCATIONS_ASSIGNED#${randomUUID()}`</div>
+      </div>
+      <div class="item flat">
+        <h4>낙관적 동시성이 사실상 없습니다 <span class="tag t-block">lost update</span></h4>
+        <p><code>fulfillment_order</code> · <code>fulfillment_order_line</code> · <code>ops_doc</code> 전부 <code>version</code> 컬럼을 들고 있는데 <b>아무도 검사하지 않습니다.</b> 리포지토리 10군데가 <code>version = version + 1</code>로 증가만 하고 <code>WHERE version = @expected</code>가 없습니다. 스펙 8개 전부가 "409 → 행 리로드"를 요구하는데 실제 구현은 PIC 로스터 하나뿐입니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">03</span><h2>코드 ↔ 스펙 — 이미 만든 것이 다른 곳</h2></div>
+    <p class="sec-sub">스펙이 8/3~8/4에 계속 바뀌는 동안 우리 코드는 예전 계약 위에 서 있습니다.</p>
+    <div class="items">
+      <div class="item">
+        <h4>재고실사 금액이 아직 계산되고 저장되고 API로 나갑니다 <span class="tag t-block">삭제된 요구사항</span></h4>
+        <p class="why">8/4에 오너가 감사에서 금액을 전부 뺐습니다. 그런데 코드는 그대로입니다. 게다가 <b>Spanner에 영구 저장</b>되고 응답 타입 세 개가 wire contract로 노출합니다.</p>
+        <div class="filelist">ConfirmStockTakeHandler.ts:76   lossValue += max(0, systemQty - countedQty) * unitCost
+ConfirmStockTakeHandler.ts:83   meta: { ...doc.meta, adjusted, lossValue }   ← 영구 저장
+GetStockTakeHandler.ts:26,34    행별 + 합계
+FulfillmentAdminViews.ts:267,276,282   응답 타입 3개</div>
+        <p>이미 쓰인 데이터가 있으면 마이그레이션 판단이 필요합니다. 입고 원가 자체는 유지해야 하고, 지울 건 <b>감사 경로가 그 원가를 읽는 것</b>뿐입니다.</p>
+      </div>
+
+      <div class="item">
+        <h4>라인에 출고 상태를 씁니다 <span class="tag t-conflict">연쇄 위험</span></h4>
+        <p class="why">스펙 세 화면 모두 라인 상태는 <code>PENDING</code>/<code>INBOUNDED</code> 둘뿐이고 출고는 주문 단위입니다. 우리는 라인에 <code>OUTBOUNDED</code>를 씁니다.</p>
+        <p><b>한 줄 수정이 아닙니다.</b> rollup이 라인 상태에서 파생되고, 마감 OK 판정이 그 rollup에 걸려 있고, 반품 처리도 라인 상태에 의존합니다. 주문 단위 출고 상태를 어디 둘지 먼저 정하지 않으면 마감이 깨집니다. 참고로 <code>qty_outbounded</code> 컬럼은 참조 0건인 죽은 컬럼이었습니다.</p>
+      </div>
+
+      <div class="item">
+        <h4>입고 운송장을 스캔해도 못 찾습니다 <span class="tag t-build">선행 작업</span></h4>
+        <p class="why">입고 운송장이 <code>tracking_number</code> 테이블이 아니라 <code>ops_doc.meta</code> JSON에만 들어갑니다. 우선순위 문제 이전에 <b>조회 대상이 없습니다.</b> 그리고 다중 운송장은 누적이 아니라 덮어쓰기라 두 번째 등록이 첫 번째를 지웁니다.</p>
+        <p>입고요청 취소의 "매칭 비활성화"가 여기 의존하니 이게 순서상 먼저입니다.</p>
+      </div>
+
+      <div class="item">
+        <h4>입고요청 상태가 2개뿐입니다 <span class="tag t-conflict">모델 부족</span></h4>
+        <p class="why"><code>신청</code>/<code>입고완료</code> 둘만 있고, 부분입고는 <code>meta.partialNote</code>에 <code>"부분 입고 620/800"</code> 문자열로 들어갑니다. 필터도, 화면 뱃지도, "부분입고 상태에선 취소 불가" 가드도 표현이 안 됩니다.</p>
+      </div>
+
+      <div class="item">
+        <h4>마케팅 임포트 — 다섯 군데가 다릅니다 <span class="tag t-conflict">order-management</span></h4>
+        <p class="why">PIC이 배치가 아니라 <b>행 단위</b>입니다(스펙: "행별 PIC은 없다"). 캐리어 자동배정이 통째로 없어서 "캐리어 미연결" 주문이 애초에 생기지 않습니다. 미리보기→확정 2단계가 아니라 확정이 행 배열을 다시 받습니다. 샘플이 "세트 하나"가 아니라 SKU별 라인이고 겹치면 수량을 합산합니다. 멱등성이 파일 단위가 아니라 캠페인·인플루언서 유니크라 <b>2차 발송을 영구히 못 만듭니다.</b></p>
+      </div>
+
+      <div class="item flat">
+        <h4>아직 없는 것 <span class="tag t-none">MISSING</span></h4>
+        <p>Amend Closing 전체 · 입고요청 수정/취소 · 예상수량 편집 · 미인식 트래킹 화면 전체 · 비인식 바코드 2단계 플로우 · 대량 라벨 인쇄 · 바코드 등록 · 아침 알림 스케줄러. 그리고 <b>프론트는 8개 화면 전부 없습니다</b> — <code>/oms/fulfillment2</code> 라우트 부재, admin 전체에서 V2 API 호출 0건.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">04</span><h2>문서 — 드로잉은 멀쩡하고 스펙이 뒤처졌습니다</h2></div>
+    <p class="sec-sub">와이어프레임 9개를 실제로 띄워서 DOM을 계측했습니다. 예상과 반대 결과가 나왔습니다.</p>
+
+    <div class="verdict calm" style="margin-bottom:18px">
+      <p><b>드로잉은 건강합니다.</b> 선언된 유닛 누락 0건, 8/3 수정 배치 20건 전부 적용 확인, Comments hub 레거시 문자열 잔존 0건. "적용 안 된 게 있으면 그게 findings"라고 걸어놨는데 하나도 안 나왔습니다.</p>
+    </div>
+
+    <div class="items">
+      <div class="item">
+        <h4>스펙 §2가 stale한 층입니다 <span class="tag t-doc">구조적</span></h4>
+        <p class="why">Start Here가 개발자에게 <b>"버그 올리기 전에 §2.3과 §2.4를 읽어라"</b>고 지시합니다. 그런데 하필 그 §2가 드로잉보다 뒤처져 있습니다.</p>
+        <p>재고 화면은 드로잉에 legend 17·18이 실재하는데 스펙은 "총 16개"라고 선언하고 "이 모달들은 자기 dot이 없다"고 서술합니다. RTO는 §2.4가 <code>WF-9</code>을 "조건부"라 하는데 같은 문서 §3은 "적용 완료"라 합니다. View Orders는 결함으로 인용한 문자열이 페이지에 아예 없습니다. tracking-missing은 "배포 아직 안 됨"인데 이미 라이브입니다.</p>
+        <p class="why">감사한 에이전트가 이걸 자기 오독으로 증명했습니다. §2.4만 읽고 잘못 판정할 뻔했다가 §3을 보고 정정했습니다.</p>
+      </div>
+
+      <div class="item">
+        <h4>코퍼스 주장 하나가 사실과 다릅니다 <span class="tag t-doc">문장 정정</span></h4>
+        <p class="why">여러 스펙이 "8개 와이어프레임 전부가 HUB-1~7을 렌더한다"고 적었는데, 실측은 <b>HUB-1~4만 8/8이고 HUB-5·6·7은 5개 페이지에만</b> 있습니다. closing·inbound-request·tracking-missing은 검색 패널 자체를 안 만들었습니다. 각자 §3엔 정확히 적혀 있어서 틀린 건 요약 문장 쪽입니다.</p>
+      </div>
+
+      <div class="item flat">
+        <h4>어느 결함 목록에도 없는 것 <span class="tag t-doc">신규</span></h4>
+        <p>글로벌 내비게이션이 페이지마다 다릅니다 — 카테고리 4개/5개/6개 세 변종. 원래 라이브 어드민 단일 캡처에서 상속된 chrome이라 최소 두 변종은 stale입니다. 그리고 inbound-request에 삭제된 기능의 CSS(<code>.vomock</code>)가 남아 있습니다. 개발자가 이걸 보고 죽은 기능을 되살리는 게 정확히 그 위험입니다.</p>
+      </div>
+
+      <div class="item flat">
+        <h4>1차 때 지적한 것 — 여전히 유효 <span class="tag t-doc">미수정</span></h4>
+        <p>8/4에 재고 실사에서 금액을 뺀 결정이 Start Here §6 · Prerequisites D1 · 인덱스 요약 세 곳에 반영 안 됐습니다. 정작 <code>stock-status.md</code> 안에서는 완벽하게 전파됐고요. 개발자가 제일 먼저 읽는 페이지들이라 그대로 두면 없어진 기능을 만듭니다. 그리고 <b>shipping-label은 드로잉만 있고 스펙이 없습니다</b>(라이브 9개, 스펙 8개).</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">05</span><h2>오너 결정 대기 — 이게 막고 있습니다</h2></div>
+    <p class="sec-sub">답이 없으면 스키마를 확정할 수 없거나, 확정하면 나중에 되돌려야 하는 것들.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>결정할 것</th><th>누가</th><th>답 없으면</th></tr></thead>
+        <tbody>
+          <tr><td>WooCommerce 동기화 방향 — 무엇이 나가고, 들어오는 건 webhook인지 폴링인지, 충돌 시 누가 이기는지</td><td class="who">민철 님</td><td>두 시스템이 조용히 어긋남. 스펙이 "빌드 전 확정" 표시</td></tr>
+          <tr><td>재고 소싱 루트 해석 규칙</td><td class="who">민철 님</td><td><b>스키마 확정 불가.</b> 답에 따라 세 설계가 배타적</td></tr>
+          <tr><td>SKU↔로케이션 1:1 배타성</td><td class="who">민철 님</td><td>인덱스를 넣으면 규칙 찬반 근거 수집이 막힘. 지금은 넣지 말 것</td></tr>
+          <tr><td>마케팅 임포트 주문의 금액</td><td class="who">민철 님</td><td>통관 신고·재무 정산 분리가 막힘</td></tr>
+          <tr><td>캐리어 라벨 취득 경로</td><td class="who">민철 님 + 외부</td><td>인쇄 경로 전체. 문서도 "최대 미명세 의존성"이라 인정</td></tr>
+          <tr><td>Slack 채널 ID 3개 + <code>OTHER</code> 루트용 채널 신설</td><td class="who">SkinSeoul</td><td>알림 배선 불가. <code>OTHER</code> 채널은 아예 존재하지 않음</td></tr>
+          <tr><td>프린트 에이전트 · 라벨지 · 스캐너 · TTS</td><td class="who">SkinSeoul</td><td>인쇄 기능 전부. 브라우저 인쇄 fallback을 스펙이 금지</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">06</span><h2>실행 순서</h2></div>
+    <p class="sec-sub">의존 관계가 있어서 순서가 중요합니다.</p>
+    <ol class="steps">
+      <li><b>라이브 버그 세 개 먼저</b><span>마감 스캔 유실, 더블클릭 이중 처리, <code>WH#00</code> 오염. 스펙 논쟁 없이 그냥 버그고, 지금도 데이터가 쌓이고 있습니다.</span></li>
+      <li><b>재고실사 금액 코드 제거</b><span>8/4 결정 반영. 이미 저장된 <code>lossValue</code> 데이터 규모부터 확인.</span></li>
+      <li><b>Yongwon에게 문서 정정 요청</b><span>Loss 삭제 미반영 3곳, "frozen 8/3" 라벨, HUB 문자열 주장, 그리고 §2가 §3보다 뒤처진 4건. 5분짜리 수정인데 오독 비용이 큽니다.</span></li>
+      <li><b>오너 결정 4건 수령</b><span>WooCommerce 동기 방향 / 재고 route / 1:1 배타성 / 마케팅 주문 금액.</span><span class="dep">→ 재고 route 답이 나와야 스키마 설계 확정 가능</span></li>
+      <li><b>스키마 v13 설계</b><span>신규 테이블 13개 + 변경 10건. 오너 답에 의존하지 않는 것(comment, comment_user_state, notification_dispatch, print_job, idempotency_record)부터 먼저 잡을 수 있습니다.</span><span class="dep">→ 4번의 route 답 대기, 단 <code>stock_movement.sourcing_route</code>는 선행 추가 가능</span></li>
+      <li><b>입고 운송장을 tracking 테이블로</b><span>지금은 meta JSON에만 있어서 스캔이 안 됩니다.</span><span class="dep">→ 입고요청 취소의 "매칭 비활성화"가 여기 의존</span></li>
+      <li><b>마감 세션에 날짜 키 부여</b><span>지금 <code>randomUUID()</code>라 "날짜당 한 행"을 못 만듭니다.</span><span class="dep">→ Amend Closing 구현의 선행 조건</span></li>
+      <li><b>라인 출고 상태 정리</b><span>주문 단위 출고 상태를 어디 둘지 먼저 정하고 나서. 순서를 잘못 잡으면 마감 판정이 깨집니다.</span></li>
+      <li><b>듀얼런 단계 × 화면 매트릭스</b><span>스펙엔 마이그레이션 얘기가 한 번도 안 나옵니다. 우리 쪽 문서인데 아무도 안 쓰고 있습니다.</span></li>
+    </ol>
+  </section>
+
+  <footer>
+    근거: Notion 스펙 12페이지 + 화면 스펙 8개 본문(§3·§4·§5·§7) 전문 · Spanner <code>001-fulfillment-initial-schema.ddl</code> (v12, 2026-07-26 lock) · facade <code>domain/fulfillment/**</code> 핸들러 · admin 라우트·API 배선 · 와이어프레임 9개 Aside 실측 + raw HTML 교차검증 · 2026-08-04 기준.<br>
+    한계: 스펙 §6 Integrations 미독 · §4/§7/§8이 인용하는 토스트·모달 문자열 수백 개 미대조 · admin V1 화면 본문 미독 · 화면별 구현 개수는 ±30% 근사치.
+  </footer>
+
+</div>
+</body>
+</html>
